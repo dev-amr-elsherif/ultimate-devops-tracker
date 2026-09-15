@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useRoadmap, FilterCategory } from "@/context/RoadmapContext";
-import { Search, Download, RotateCcw, Filter, Layers, Zap, Trophy } from "lucide-react";
+import { Search, Download, RotateCcw, Filter, Layers, Zap, Trophy, Upload } from "lucide-react";
 import { soundFx } from "@/lib/audio";
 
 export const FilterBar: React.FC = () => {
@@ -15,6 +15,7 @@ export const FilterBar: React.FC = () => {
     exportSnapshot,
     resetProgress,
     setIsPasscodeModalOpen,
+    setIsSnapshotModalOpen,
   } = useRoadmap();
 
   const handleFilterClick = (cat: FilterCategory) => {
@@ -107,9 +108,10 @@ export const FilterBar: React.FC = () => {
           </button>
         </div>
 
-        {/* Snapshot export & reset utilities */}
+        {/* Snapshot export, ingest & reset utilities */}
         <div className="flex items-center gap-2 border-t md:border-t-0 md:border-l border-slate-800 pt-2 md:pt-0 md:pl-3">
           <button
+            data-testid="export-snapshot-btn"
             onClick={exportSnapshot}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-cyan-300 font-mono text-xs transition-all"
             title="Download JSON Snapshot of current progress"
@@ -119,6 +121,20 @@ export const FilterBar: React.FC = () => {
           </button>
 
           <button
+            data-testid="ingest-snapshot-btn"
+            onClick={() => {
+              soundFx.playBlip(750);
+              setIsSnapshotModalOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-cyan-300 font-mono text-xs transition-all"
+            title="Ingest / Import JSON Telemetry Snapshot"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">INGEST</span>
+          </button>
+
+          <button
+            data-testid="reset-progress-btn"
             onClick={handleResetClick}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900/80 hover:bg-rose-950/40 border border-slate-800 hover:border-rose-500/40 text-slate-400 hover:text-rose-300 font-mono text-xs transition-all"
             title="Purge progress metrics (Requires Commander Mode)"

@@ -202,4 +202,124 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     // Assert zero page errors
     expect(errorLogs).toEqual([]);
   });
+
+  test("7. Telemetry Snapshot Ingest & Export - Ingests valid snapshot and updates telemetry", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+
+    // Attempt to open Ingest modal in Observer Mode
+    const ingestBtn = page.getByTestId("ingest-snapshot-btn");
+    await ingestBtn.click();
+
+    // Verify snapshot modal is open
+    const modalHeading = page.locator("text=Telemetry Snapshot Ingest");
+    await expect(modalHeading).toBeVisible();
+
+    // Observer sees Commander Clearance warning and unlock button
+    await expect(page.locator("text=COMMANDER CLEARANCE REQUIRED")).toBeVisible();
+    const unlockBtn = page.getByRole("button", { name: /UNLOCK COMMANDER MODE/i });
+    await expect(unlockBtn).toBeVisible();
+
+    // Unlock Commander Mode via the modal prompt
+    await unlockBtn.click();
+    await page.getByPlaceholder("ENTER PASSCODE...").fill("admin123");
+    await page.getByRole("button", { name: /AUTHENTICATE/i }).click();
+
+    // Re-open ingest modal as Commander
+    await ingestBtn.click();
+    await expect(modalHeading).toBeVisible();
+    await expect(page.locator("text=COMMANDER CLEARANCE REQUIRED")).not.toBeVisible();
+
+    // Fill valid JSON snapshot with 4 tasks and 1 milestone
+    const validSnapshot = JSON.stringify({
+      version: "1.0",
+      exportedAt: new Date().toISOString(),
+      clearanceRank: "SysAdmin",
+      progressPercentage: 3,
+      completedTaskIds: ["task-0.1.1", "task-0.1.2", "task-0.1.3", "task-1.1.1"],
+      completedMilestoneIds: ["ms-sys-init-probe"],
+    });
+
+    const textarea = page.getByTestId("snapshot-textarea");
+    await textarea.fill(validSnapshot);
+
+    // Verify preview renders
+    await expect(page.locator("text=VALID SNAPSHOT DETECTED")).toBeVisible();
+
+    // Ingest snapshot
+    const submitBtn = page.getByTestId("snapshot-submit-btn");
+    await submitBtn.click();
+
+    // Verify modal closes and toast appears
+    await expect(modalHeading).not.toBeVisible();
+    await expect(page.locator("text=TELEMETRY INGESTED")).toBeVisible();
+
+    // Verify HUD telemetry reflects 4 completed tasks
+    await expect(page.locator("text=/4 \\/ 132/")).toBeVisible();
+
+    // Verify state persistence across page reload
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+    await expect(page.locator("text=/4 \\/ 132/")).toBeVisible();
+
+    // Verify Export button triggers download
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByTestId("export-snapshot-btn").click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/devops-roadmap-snapshot.*\.json/);
+  });
+
+  test("8. Google Drive Cloud Sync - Widget states, connect, synced indicator, and disconnect lifecycle", async ({ page }) => {
+    const errorLogs: string[] = [];
+    page.on("pageerror", (err) => {
+      errorLogs.push(err.message);
+    });
+
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+
+    // 1. Disconnected State: Connect Drive button exists in Header HUD
+    const driveBtn = page.getByTestId("drive-connect-btn");
+    await expect(driveBtn).toBeVisible();
+
+    // Click Connect Drive button -> triggers auth attempt and handles rejection gracefully
+    await driveBtn.click();
+    const alertToast = page.locator("text=/GOOGLE CLIENT ID NOT CONFIGURED|DRIVE SYNC FAILED/");
+    await expect(alertToast).toBeVisible();
+
+    // 2. Connected/Synced State: Set session storage token and user
+    await page.evaluate(() => {
+      sessionStorage.setItem("devops_drive_token", "mock-session-token");
+      sessionStorage.setItem(
+        "devops_drive_user",
+        JSON.stringify({ email: "commander@cloud.dev", name: "Commander Alex" })
+      );
+    });
+
+    // Reload to let RoadmapProvider restore session
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+
+    // Assert Synced widget is now visible
+    const syncedWidget = page.getByTestId("drive-synced-widget");
+    await expect(syncedWidget).toBeVisible();
+    await expect(page.locator("text=/DRIVE SYNCED/")).toBeVisible();
+
+    // Manual sync button exists
+    const manualSyncBtn = page.getByTestId("drive-sync-manual-btn");
+    await expect(manualSyncBtn).toBeVisible();
+
+    // 3. Disconnect: Click disconnect button
+    const disconnectBtn = page.getByTestId("drive-disconnect-btn");
+    await disconnectBtn.click();
+
+    // Assert toast appears
+    await expect(page.locator("text=DRIVE DISCONNECTED")).toBeVisible();
+
+    // Assert reverts to Connect Drive button
+    await expect(page.getByTestId("drive-connect-btn")).toBeVisible();
+
+    // Verify zero unhandled exceptions
+    expect(errorLogs).toEqual([]);
+  });
 });

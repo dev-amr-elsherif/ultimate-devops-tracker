@@ -5,6 +5,7 @@ import { RoadmapProvider } from "@/context/RoadmapContext";
 import { CyberCanvas } from "@/components/CyberCanvas";
 import { ToastContainer } from "@/components/Toast";
 import { PasscodeModal } from "@/components/PasscodeModal";
+import { SnapshotModal } from "@/components/SnapshotModal";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,9 +31,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
     >
-      <body className="min-h-full flex flex-col bg-slate-950 text-slate-100 relative selection:bg-cyan-500/30 selection:text-white">
+      <body
+        suppressHydrationWarning
+        className="min-h-full flex flex-col bg-slate-950 text-slate-100 relative selection:bg-cyan-500/30 selection:text-white"
+      >
         <RoadmapProvider>
           {/* 3D Perspective Cyber Grid & Floating Starfield Canvas */}
           <CyberCanvas />
@@ -47,6 +52,7 @@ export default function RootLayout({
 
           {/* Modal & Toast Alerts */}
           <PasscodeModal />
+          <SnapshotModal />
           <ToastContainer />
         </RoadmapProvider>
       </body>
