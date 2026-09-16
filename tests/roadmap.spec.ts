@@ -270,7 +270,38 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     const downloadPromise = page.waitForEvent("download");
     await page.getByTestId("export-snapshot-btn").click();
     const download = await downloadPromise;
-    expect(download.suggestedFilename()).toMatch(/devops-roadmap-snapshot.*\.json/);
+    expect(download.suggestedFilename()).toMatch(/devops-telemetry.*\.json/);
+
+    // Verify Danger Zone Reset / Purge with ConfirmModal
+    await ingestBtn.click();
+    await expect(modalHeading).toBeVisible();
+
+    // Click Danger Zone Purge button
+    const resetBtn = page.getByTestId("reset-progress-btn");
+    await expect(resetBtn).toBeVisible();
+    await resetBtn.click();
+
+    // Verify Snapshot modal closes and ConfirmModal opens
+    await expect(modalHeading).not.toBeVisible();
+    const confirmModalTitle = page.locator("text=CRITICAL TELEMETRY PURGE PROTOCOL");
+    await expect(confirmModalTitle).toBeVisible();
+
+    // Click Cancel / Abort
+    await page.getByTestId("cancel-purge-btn").click();
+    await expect(confirmModalTitle).not.toBeVisible();
+    await expect(page.locator("text=/4 \\/ 132/")).toBeVisible();
+
+    // Open Snapshot modal again and confirm purge
+    await ingestBtn.click();
+    await expect(resetBtn).toBeVisible();
+    await resetBtn.click();
+    await expect(confirmModalTitle).toBeVisible();
+
+    // Click Purge All Data
+    await page.getByTestId("confirm-purge-btn").click();
+    await expect(confirmModalTitle).not.toBeVisible();
+    await expect(page.locator("text=TELEMETRY PURGED")).toBeVisible();
+    await expect(page.locator("text=/0 \\/ 132/")).toBeVisible();
   });
 
   test("8. Google Drive Cloud Sync - Widget states, connect, synced indicator, and disconnect lifecycle", async ({ page }) => {

@@ -55,15 +55,69 @@ export interface RoadmapProgressState {
   lastUpdated: string;
 }
 
-export interface TelemetrySnapshot {
-  version: string;
+export interface RoadmapFullSnapshot {
+  schemaVersion: "2.1.0";
   exportedAt: string;
-  clearanceRank: string;
-  progressPercentage: number;
-  completedTaskIds: string[];
-  completedMilestoneIds: string[];
-  projectArtifacts?: Record<string, ProjectArtifact>;
+  engine: "Ultimate DevOps Tracker Pro";
+  user?: {
+    email?: string;
+    role: "commander" | "observer";
+  };
+  telemetry: {
+    completionPercentage: number;
+    completedTasksCount: number;
+    verifiedMilestonesCount: number;
+    clearanceRank: string;
+  };
+  state: {
+    completedTaskIds: string[];
+    // Forward-compatible record for future mini-tasks, custom timestamps, and sub-steps
+    taskDetails?: Record<string, {
+      completed: boolean;
+      completedAt?: string;
+      miniTasks?: Record<string, boolean>;
+      userNotes?: string;
+    }>;
+    completedMilestoneIds: string[];
+    artifacts: Record<string, {
+      repoUrl?: string;
+      liveUrl?: string;
+      notes?: string;
+      updatedAt: string;
+    }>;
+  };
+  metadata: {
+    customNotes?: string;
+    tags?: string[];
+    [key: string]: unknown; // Full open extensibility
+  };
 }
+
+export interface LegacyTelemetrySnapshot {
+  version?: string;
+  schemaVersion?: string;
+  exportedAt?: string;
+  clearanceRank?: string;
+  progressPercentage?: number;
+  completedTaskIds?: string[];
+  completedTasks?: string[];
+  completedMilestoneIds?: string[];
+  completedMilestones?: string[];
+  projectArtifacts?: Record<string, ProjectArtifact>;
+  state?: {
+    completedTaskIds?: string[];
+    completedMilestoneIds?: string[];
+    artifacts?: Record<string, ProjectArtifact>;
+    taskDetails?: Record<string, {
+      completed: boolean;
+      completedAt?: string;
+      miniTasks?: Record<string, boolean>;
+      userNotes?: string;
+    }>;
+  };
+}
+
+export type TelemetrySnapshot = RoadmapFullSnapshot | LegacyTelemetrySnapshot;
 
 interface RoadmapContextType {
   isMounted: boolean;
@@ -72,6 +126,9 @@ interface RoadmapContextType {
   setIsSnapshotModalOpen: (open: boolean) => void;
   isBadgeModalOpen: boolean;
   setIsBadgeModalOpen: (open: boolean) => void;
+  isResetModalOpen: boolean;
+  setIsResetModalOpen: (open: boolean) => void;
+  promptResetProgress: () => void;
   logoutCommander: () => void;
   revokeCommander: () => void;
   setTestCommander: (enabled: boolean) => void;
@@ -129,6 +186,7 @@ interface RoadmapContextType {
 const STORAGE_KEY = "devops_roadmap_progress";
 const ALT_STORAGE_KEY = "devops_roadmap_state";
 const ARTIFACTS_STORAGE_KEY = "devops_roadmap_artifacts";
+export const TASK_DETAILS_STORAGE_KEY = "devops_roadmap_task_details";
 export const AUTHORIZED_COMMANDERS = [
   "dev.amrelsherif@gmail.com",
   "amrelsherif.swe@gmail.com",
@@ -210,6 +268,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const [isSnapshotModalOpen, setIsSnapshotModalOpen] = useState<boolean>(false);
   const [isBadgeModalOpen, setIsBadgeModalOpen] = useState<boolean>(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState<boolean>(false);
   const [activeFilter, setActiveFilter] = useState<FilterCategory>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isAudioMuted, setIsAudioMuted] = useState<boolean>(() => soundFx.isMuted());
@@ -461,6 +520,21 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [isCommander, addToast]
   );
 
+  // Prompt Reset Progress (Triggers Cyberpunk Confirmation Modal)
+  const promptResetProgress = useCallback(() => {
+    if (!isCommander) {
+      soundFx.playAccessDenied();
+      addToast({
+        type: "denied",
+        title: "ACCESS DENIED",
+        description: "Commander Mode authentication required to purge telemetry.",
+      });
+      return;
+    }
+    soundFx.playErrorBuzz();
+    setIsResetModalOpen(true);
+  }, [isCommander, addToast]);
+
   // Reset Progress
   const resetProgress = useCallback(() => {
     if (!isCommander) {
@@ -474,7 +548,9 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(ALT_STORAGE_KEY);
       localStorage.removeItem(ARTIFACTS_STORAGE_KEY);
+      localStorage.removeItem(TASK_DETAILS_STORAGE_KEY);
     } catch {}
+    setIsResetModalOpen(false);
     soundFx.playBlip(300);
     addToast({
       type: "info",
@@ -516,32 +592,132 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return { title: "Cadet", level: 1, color: "text-slate-400", badge: "CR-01 // CADET" };
   }, [completionPercentage]);
 
-  // Export Snapshot JSON
+  // Export Snapshot JSON (v2.1.0 RoadmapFullSnapshot)
   const exportSnapshot = useCallback(() => {
     soundFx.playBlip(980);
-    const data: TelemetrySnapshot = {
-      version: "1.0",
+    const taskDetails: Record<
+      string,
+      { completed: boolean; completedAt?: string; miniTasks?: Record<string, boolean>; userNotes?: string }
+    > = {};
+
+    try {
+      const savedDetailsStr = localStorage.getItem(TASK_DETAILS_STORAGE_KEY);
+      if (savedDetailsStr) {
+        Object.assign(taskDetails, JSON.parse(savedDetailsStr));
+      }
+    } catch {}
+
+    for (const taskId of completedTaskIds) {
+      if (!taskDetails[taskId]) {
+        taskDetails[taskId] = {
+          completed: true,
+          completedAt: new Date().toISOString(),
+        };
+      } else {
+        taskDetails[taskId].completed = true;
+      }
+    }
+
+    const data: RoadmapFullSnapshot = {
+      schemaVersion: "2.1.0",
       exportedAt: new Date().toISOString(),
-      clearanceRank: clearanceRank.title,
-      progressPercentage: completionPercentage,
-      completedTaskIds: Array.from(completedTaskIds),
-      completedMilestoneIds: Array.from(completedMilestoneIds),
-      projectArtifacts: projectArtifacts,
+      engine: "Ultimate DevOps Tracker Pro",
+      user: {
+        email: driveUser?.email || undefined,
+        role: isCommander ? "commander" : "observer",
+      },
+      telemetry: {
+        completionPercentage,
+        completedTasksCount,
+        verifiedMilestonesCount: completedMilestonesCount,
+        clearanceRank: clearanceRank.title,
+      },
+      state: {
+        completedTaskIds: Array.from(completedTaskIds),
+        taskDetails,
+        completedMilestoneIds: Array.from(completedMilestoneIds),
+        artifacts: projectArtifacts,
+      },
+      metadata: {
+        customNotes: "Telemetry snapshot captured from Ultimate DevOps Tracker Pro",
+        tags: ["devops", "cloud-architecture", "systems-engineering"],
+      },
     };
+
     const jsonStr = JSON.stringify(data, null, 2);
     const blob = new Blob([jsonStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `devops-roadmap-snapshot-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `devops-telemetry-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     addToast({
       type: "success",
       title: "SNAPSHOT EXPORTED",
-      description: "Roadmap telemetry JSON successfully downloaded.",
+      description: "Roadmap telemetry JSON (v2.1.0) successfully downloaded.",
     });
-  }, [completedTaskIds, completedMilestoneIds, projectArtifacts, clearanceRank.title, completionPercentage, addToast]);
+  }, [
+    completedTaskIds,
+    completedMilestoneIds,
+    projectArtifacts,
+    clearanceRank.title,
+    completionPercentage,
+    completedTasksCount,
+    completedMilestonesCount,
+    driveUser?.email,
+    isCommander,
+    addToast,
+  ]);
+
+// Helper to normalize snapshot payloads across v2.1.0 RoadmapFullSnapshot and legacy v1.0
+function extractTelemetryData(raw: unknown): {
+  taskIds: string[] | null;
+  milestoneIds: string[] | null;
+  artifacts: Record<string, ProjectArtifact>;
+  taskDetails: Record<string, unknown>;
+} {
+  if (!raw || typeof raw !== "object") {
+    return { taskIds: null, milestoneIds: null, artifacts: {}, taskDetails: {} };
+  }
+  const data = raw as Record<string, unknown>;
+  let taskIds: string[] | null = null;
+  let milestoneIds: string[] | null = null;
+  let artifacts: Record<string, ProjectArtifact> = {};
+  let taskDetails: Record<string, unknown> = {};
+
+  if (data.state && typeof data.state === "object") {
+    const stateObj = data.state as Record<string, unknown>;
+    if (Array.isArray(stateObj.completedTaskIds)) {
+      taskIds = stateObj.completedTaskIds as string[];
+    }
+    if (Array.isArray(stateObj.completedMilestoneIds)) {
+      milestoneIds = stateObj.completedMilestoneIds as string[];
+    }
+    if (stateObj.artifacts && typeof stateObj.artifacts === "object") {
+      artifacts = stateObj.artifacts as Record<string, ProjectArtifact>;
+    }
+    if (stateObj.taskDetails && typeof stateObj.taskDetails === "object") {
+      taskDetails = stateObj.taskDetails as Record<string, unknown>;
+    }
+  }
+
+  if (!taskIds) {
+    if (Array.isArray(data.completedTaskIds)) taskIds = data.completedTaskIds as string[];
+    else if (Array.isArray(data.completedTasks)) taskIds = data.completedTasks as string[];
+  }
+
+  if (!milestoneIds) {
+    if (Array.isArray(data.completedMilestoneIds)) milestoneIds = data.completedMilestoneIds as string[];
+    else if (Array.isArray(data.completedMilestones)) milestoneIds = data.completedMilestones as string[];
+  }
+
+  if (Object.keys(artifacts).length === 0 && data.projectArtifacts && typeof data.projectArtifacts === "object") {
+    artifacts = data.projectArtifacts as Record<string, ProjectArtifact>;
+  }
+
+  return { taskIds, milestoneIds, artifacts, taskDetails };
+}
 
   // Ingest / Import Snapshot JSON
   const importSnapshot = useCallback(
@@ -557,32 +733,41 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
 
       try {
-        let data: TelemetrySnapshot;
+        let raw: unknown;
         if (typeof snapshotInput === "string") {
-          data = JSON.parse(snapshotInput.trim());
+          raw = JSON.parse(snapshotInput.trim());
         } else {
-          data = snapshotInput;
+          raw = snapshotInput;
         }
 
-        if (!data || typeof data !== "object") {
+        if (!raw || typeof raw !== "object") {
           throw new Error("Invalid snapshot format: Expected a JSON object.");
         }
 
-        if (!Array.isArray(data.completedTaskIds) || !Array.isArray(data.completedMilestoneIds)) {
-          throw new Error("Invalid payload: Missing completedTaskIds or completedMilestoneIds arrays.");
+        const { taskIds, milestoneIds, artifacts: artifactsMap, taskDetails: taskDetailsMap } =
+          extractTelemetryData(raw);
+
+        if (!taskIds || !milestoneIds) {
+          throw new Error("Missing completedTaskIds or completedMilestoneIds arrays.");
         }
 
-        const nextTasks = new Set(data.completedTaskIds.filter((id) => typeof id === "string"));
-        const nextMilestones = new Set(data.completedMilestoneIds.filter((id) => typeof id === "string"));
+        const nextTasks = new Set(taskIds.filter((id) => typeof id === "string"));
+        const nextMilestones = new Set(milestoneIds.filter((id) => typeof id === "string"));
 
         setCompletedTaskIds(nextTasks);
         setCompletedMilestoneIds(nextMilestones);
         saveProgress(nextTasks, nextMilestones);
 
-        if (data.projectArtifacts && typeof data.projectArtifacts === "object") {
-          setProjectArtifacts(data.projectArtifacts);
+        if (artifactsMap && typeof artifactsMap === "object") {
+          setProjectArtifacts(artifactsMap);
           try {
-            localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(data.projectArtifacts));
+            localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(artifactsMap));
+          } catch {}
+        }
+
+        if (taskDetailsMap && Object.keys(taskDetailsMap).length > 0) {
+          try {
+            localStorage.setItem(TASK_DETAILS_STORAGE_KEY, JSON.stringify(taskDetailsMap));
           } catch {}
         }
 
@@ -659,14 +844,16 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const remoteSnapshot = await pullFromDrive(accessToken);
 
       if (remoteSnapshot) {
-        const remoteTasks = remoteSnapshot.completedTaskIds || [];
-        const remoteMilestones = remoteSnapshot.completedMilestoneIds || [];
-        const remoteArtifacts = remoteSnapshot.projectArtifacts || {};
+        const { taskIds: remoteTasks, milestoneIds: remoteMilestones, artifacts: remoteArtifacts } =
+          extractTelemetryData(remoteSnapshot);
+
+        const safeRemoteTasks = remoteTasks || [];
+        const safeRemoteMilestones = remoteMilestones || [];
 
         setCompletedTaskIds((prevTasks) => {
-          const mergedTasks = new Set([...Array.from(prevTasks), ...remoteTasks]);
+          const mergedTasks = new Set([...Array.from(prevTasks), ...safeRemoteTasks]);
           setCompletedMilestoneIds((prevMilestones) => {
-            const mergedMilestones = new Set([...Array.from(prevMilestones), ...remoteMilestones]);
+            const mergedMilestones = new Set([...Array.from(prevMilestones), ...safeRemoteMilestones]);
             saveProgress(mergedTasks, mergedMilestones);
             return mergedMilestones;
           });
@@ -773,17 +960,23 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
       let artifactsToPush = projectArtifacts;
 
       if (remote) {
-        tasksToPush = new Set([...Array.from(completedTaskIds), ...(remote.completedTaskIds || [])]);
+        const { taskIds: remoteTasks, milestoneIds: remoteMilestones, artifacts: remoteArtifacts } =
+          extractTelemetryData(remote);
+
+        const safeRemoteTasks = remoteTasks || [];
+        const safeRemoteMilestones = remoteMilestones || [];
+
+        tasksToPush = new Set([...Array.from(completedTaskIds), ...safeRemoteTasks]);
         milestonesToPush = new Set([
           ...Array.from(completedMilestoneIds),
-          ...(remote.completedMilestoneIds || []),
+          ...safeRemoteMilestones,
         ]);
         setCompletedTaskIds(tasksToPush);
         setCompletedMilestoneIds(milestonesToPush);
         saveProgress(tasksToPush, milestonesToPush);
 
-        if (remote.projectArtifacts) {
-          artifactsToPush = { ...projectArtifacts, ...remote.projectArtifacts };
+        if (remoteArtifacts && Object.keys(remoteArtifacts).length > 0) {
+          artifactsToPush = { ...projectArtifacts, ...remoteArtifacts };
           setProjectArtifacts(artifactsToPush);
           try {
             localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(artifactsToPush));
@@ -857,6 +1050,9 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setIsSnapshotModalOpen,
         isBadgeModalOpen,
         setIsBadgeModalOpen,
+        isResetModalOpen,
+        setIsResetModalOpen,
+        promptResetProgress,
         logoutCommander,
         revokeCommander,
         setTestCommander,

@@ -1,9 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useRoadmap, TelemetrySnapshot } from "@/context/RoadmapContext";
+import { useRoadmap, TelemetrySnapshot, RoadmapFullSnapshot } from "@/context/RoadmapContext";
 import { Upload, FileUp, X, CheckCircle2, AlertTriangle, FileJson, ShieldAlert } from "lucide-react";
 import { soundFx } from "@/lib/audio";
+
+function isFullSnapshot(snapshot: TelemetrySnapshot): snapshot is RoadmapFullSnapshot {
+  return "schemaVersion" in snapshot && snapshot.schemaVersion === "2.1.0";
+}
 
 export const SnapshotModal: React.FC = () => {
   const {
@@ -12,6 +16,7 @@ export const SnapshotModal: React.FC = () => {
     isCommander,
     connectDrive,
     importSnapshot,
+    promptResetProgress,
   } = useRoadmap();
 
   useEffect(() => {
@@ -34,6 +39,10 @@ export const SnapshotModal: React.FC = () => {
         setIsSnapshotModalOpen(false);
         connectDrive();
       }}
+      onPromptReset={() => {
+        setIsSnapshotModalOpen(false);
+        promptResetProgress();
+      }}
       onImport={importSnapshot}
     />
   );
@@ -43,6 +52,7 @@ interface SnapshotDialogProps {
   isCommander: boolean;
   onClose: () => void;
   onPromptAuth: () => void;
+  onPromptReset: () => void;
   onImport: (input: string | TelemetrySnapshot) => boolean;
 }
 
@@ -50,6 +60,7 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
   isCommander,
   onClose,
   onPromptAuth,
+  onPromptReset,
   onImport,
 }) => {
   const [jsonInput, setJsonInput] = useState("");
@@ -68,9 +79,32 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
 
     try {
       const parsed = JSON.parse(text);
-      if (!Array.isArray(parsed.completedTaskIds) || !Array.isArray(parsed.completedMilestoneIds)) {
+      if (!parsed || typeof parsed !== "object") {
+        throw new Error("Invalid snapshot format: Expected a JSON object.");
+      }
+
+      let taskIds: string[] | undefined;
+      let milestoneIds: string[] | undefined;
+
+      if (parsed.state && typeof parsed.state === "object") {
+        if (Array.isArray(parsed.state.completedTaskIds)) taskIds = parsed.state.completedTaskIds;
+        if (Array.isArray(parsed.state.completedMilestoneIds)) milestoneIds = parsed.state.completedMilestoneIds;
+      }
+
+      if (!taskIds) {
+        if (Array.isArray(parsed.completedTaskIds)) taskIds = parsed.completedTaskIds;
+        else if (Array.isArray(parsed.completedTasks)) taskIds = parsed.completedTasks;
+      }
+
+      if (!milestoneIds) {
+        if (Array.isArray(parsed.completedMilestoneIds)) milestoneIds = parsed.completedMilestoneIds;
+        else if (Array.isArray(parsed.completedMilestones)) milestoneIds = parsed.completedMilestones;
+      }
+
+      if (!taskIds || !milestoneIds) {
         throw new Error("Missing completedTaskIds or completedMilestoneIds arrays.");
       }
+
       setParsedPreview(parsed);
       setParseError(null);
     } catch (err) {
@@ -199,40 +233,67 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
           )}
 
           {/* Snapshot Preview Metadata */}
-          {parsedPreview && (
-            <div className="p-3 rounded-lg bg-cyan-950/30 border border-cyan-500/30 space-y-1 text-xs font-mono text-slate-300">
-              <div className="text-cyan-400 font-bold flex items-center gap-1.5 mb-1.5">
-                <CheckCircle2 className="w-4 h-4 text-cyan-400" />
-                <span>VALID SNAPSHOT DETECTED</span>
+          {parsedPreview && (() => {
+            let taskCount = 0;
+            let milestoneCount = 0;
+            let rank = "Cadet";
+            let progress = 0;
+            let schema = "1.0";
+
+            if (isFullSnapshot(parsedPreview)) {
+              taskCount = parsedPreview.state.completedTaskIds.length;
+              milestoneCount = parsedPreview.state.completedMilestoneIds.length;
+              rank = parsedPreview.telemetry.clearanceRank;
+              progress = parsedPreview.telemetry.completionPercentage;
+              schema = parsedPreview.schemaVersion;
+            } else {
+              taskCount =
+                parsedPreview.completedTaskIds?.length ??
+                parsedPreview.completedTasks?.length ??
+                parsedPreview.state?.completedTaskIds?.length ??
+                0;
+              milestoneCount =
+                parsedPreview.completedMilestoneIds?.length ??
+                parsedPreview.completedMilestones?.length ??
+                parsedPreview.state?.completedMilestoneIds?.length ??
+                0;
+              rank = parsedPreview.clearanceRank || "N/A";
+              progress = parsedPreview.progressPercentage ?? 0;
+              schema = parsedPreview.schemaVersion || parsedPreview.version || "1.0";
+            }
+
+            return (
+              <div className="p-3 rounded-lg bg-cyan-950/30 border border-cyan-500/30 space-y-1.5 text-xs font-mono text-slate-300">
+                <div className="text-cyan-400 font-bold flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-cyan-400" />
+                    <span>VALID SNAPSHOT DETECTED</span>
+                  </div>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-900/60 border border-cyan-500/40 text-cyan-300">
+                    v{schema}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                  <div>
+                    <span className="text-slate-500">Tasks: </span>
+                    <span className="text-slate-200 font-bold">{taskCount}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Milestones: </span>
+                    <span className="text-slate-200 font-bold">{milestoneCount}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Rank: </span>
+                    <span className="text-amber-400 font-bold">{rank}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Progress: </span>
+                    <span className="text-emerald-400 font-bold">{progress}%</span>
+                  </div>
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div>
-                  <span className="text-slate-500">Tasks: </span>
-                  <span className="text-slate-200 font-bold">
-                    {parsedPreview.completedTaskIds?.length || 0}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500">Milestones: </span>
-                  <span className="text-slate-200 font-bold">
-                    {parsedPreview.completedMilestoneIds?.length || 0}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500">Rank: </span>
-                  <span className="text-amber-400 font-bold">
-                    {parsedPreview.clearanceRank || "N/A"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500">Progress: </span>
-                  <span className="text-emerald-400 font-bold">
-                    {parsedPreview.progressPercentage ?? 0}%
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Buttons */}
           <div className="flex gap-2.5 pt-2">
@@ -270,6 +331,27 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
             )}
           </div>
         </form>
+
+        {/* Danger Zone: Purge Telemetry */}
+        <div className="mt-5 pt-4 border-t border-rose-500/20 flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-rose-400 font-mono text-xs font-semibold">
+            <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
+            <span>DANGER ZONE</span>
+          </div>
+          <button
+            data-testid="reset-progress-btn"
+            type="button"
+            onClick={() => {
+              onClose();
+              onPromptReset();
+            }}
+            aria-label="Purge progress metrics (Requires Commander Mode)"
+            className="px-3 py-1.5 rounded-lg border border-rose-500/40 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 hover:text-rose-200 font-mono text-xs transition-all focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:outline-none"
+            title="Purge progress metrics (Requires Commander Mode)"
+          >
+            PURGE TELEMETRY
+          </button>
+        </div>
       </div>
     </div>
   );

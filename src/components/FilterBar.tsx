@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useRoadmap, FilterCategory } from "@/context/RoadmapContext";
-import { Search, Download, RotateCcw, Filter, Layers, Zap, Trophy, Upload } from "lucide-react";
+import { Search, Download, Filter, Layers, Zap, Trophy, Upload } from "lucide-react";
 import { soundFx } from "@/lib/audio";
 
 export const FilterBar: React.FC = () => {
@@ -11,25 +11,13 @@ export const FilterBar: React.FC = () => {
     setActiveFilter,
     searchQuery,
     setSearchQuery,
-    isCommander,
     exportSnapshot,
-    resetProgress,
     setIsSnapshotModalOpen,
   } = useRoadmap();
 
   const handleFilterClick = (cat: FilterCategory) => {
     soundFx.playBlip(620);
     setActiveFilter(cat);
-  };
-
-  const handleResetClick = () => {
-    if (!isCommander) {
-      soundFx.playAccessDenied();
-      return;
-    }
-    if (confirm("WARNING: Are you certain you wish to purge all recorded roadmap telemetry? This cannot be undone.")) {
-      resetProgress();
-    }
   };
 
   return (
@@ -135,17 +123,6 @@ export const FilterBar: React.FC = () => {
           >
             <Upload className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">INGEST</span>
-          </button>
-
-          <button
-            data-testid="reset-progress-btn"
-            onClick={handleResetClick}
-            aria-label="Purge progress metrics (Requires Commander Mode)"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900/80 hover:bg-rose-950/40 border border-slate-800 hover:border-rose-500/40 text-slate-400 hover:text-rose-300 font-mono text-xs transition-all focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:outline-none"
-            title="Purge progress metrics (Requires Commander Mode)"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">RESET</span>
           </button>
         </div>
       </div>

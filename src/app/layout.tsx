@@ -7,6 +7,7 @@ import { ToastContainer } from "@/components/Toast";
 import { FloatingDock } from "@/components/FloatingDock";
 import { SnapshotModal } from "@/components/SnapshotModal";
 import { ClearanceBadgeModal } from "@/components/ClearanceBadgeModal";
+import { ConfirmModal } from "@/components/ConfirmModal";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -86,6 +87,7 @@ export default function RootLayout({
           <FloatingDock />
           <SnapshotModal />
           <ClearanceBadgeModal />
+          <ConfirmModal />
           <ToastContainer />
         </RoadmapProvider>
       </body>
