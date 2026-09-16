@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useRoadmap } from "@/context/RoadmapContext";
@@ -65,17 +65,6 @@ export const ClearanceBadgeModal: React.FC = () => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isBadgeModalOpen, closeDialog]);
-
-  const generateFingerprint = useCallback(() => {
-    const seed = `AFE-${completionPercentage}-${completedTasksCount}-${verifiedArtifactsCount}`;
-    let hash = 0x811c9dc5;
-    for (let i = 0; i < seed.length; i++) {
-      hash ^= seed.charCodeAt(i);
-      hash = (hash * 0x01000193) >>> 0;
-    }
-    const hex = hash.toString(16).toUpperCase().padStart(8, "0");
-    return `${hex.slice(0, 4)}-${hex.slice(4, 8)}-C0DE`;
-  }, [completionPercentage, completedTasksCount, verifiedArtifactsCount]);
 
   const drawRoundRect = (
     ctx: CanvasRenderingContext2D,
@@ -226,7 +215,22 @@ export const ClearanceBadgeModal: React.FC = () => {
           img.onerror = () => reject();
           setTimeout(() => reject(), 3000);
         });
-        ctx.drawImage(img, avatarCX - avatarR, avatarCY - avatarR, avatarR * 2, avatarR * 2);
+
+        // Center-crop square based on image aspect ratio (object-fit: cover)
+        const cropSize = Math.min(img.width, img.height);
+        const sx = (img.width - cropSize) / 2;
+        const sy = (img.height - cropSize) / 2;
+        ctx.drawImage(
+          img,
+          sx,
+          sy,
+          cropSize,
+          cropSize,
+          avatarCX - avatarR,
+          avatarCY - avatarR,
+          avatarR * 2,
+          avatarR * 2
+        );
       } catch {
         ctx.fillStyle = "rgba(10, 16, 36, 1)";
         ctx.fillRect(avatarCX - avatarR, avatarCY - avatarR, avatarR * 2, avatarR * 2);
@@ -253,68 +257,39 @@ export const ClearanceBadgeModal: React.FC = () => {
 
     // 7. Identity Block
     const idX = 230;
-    const idY = 130;
 
-    ctx.font = "bold 36px 'Courier New', monospace";
+    ctx.font = "bold 38px 'Courier New', monospace";
     ctx.fillStyle = "#f8fafc";
-    ctx.fillText(ENGINEER_NAME, idX, idY);
+    ctx.fillText(ENGINEER_NAME, idX, 162);
 
-    ctx.font = "bold 15px 'Courier New', monospace";
+    ctx.font = "bold 16px 'Courier New', monospace";
     ctx.fillStyle = "#38bdf8";
-    ctx.fillText("DevOps & Cloud Systems Architect", idX, idY + 28);
-
-    ctx.fillStyle = "rgba(245, 158, 11, 0.12)";
-    ctx.strokeStyle = "rgba(245, 158, 11, 0.6)";
-    ctx.lineWidth = 1.5;
-    drawRoundRect(ctx, idX, idY + 40, 390, 28, 6);
-    ctx.fill(); ctx.stroke();
-    ctx.font = "bold 12px 'Courier New', monospace";
-    ctx.fillStyle = "#fbbf24";
-    ctx.fillText(
-      `MASTER CLEARANCE: LEVEL ${clearanceRank.level} // ${clearanceRank.title.toUpperCase()}`,
-      idX + 12, idY + 59
-    );
+    ctx.fillText("DevOps & Cloud Systems Architect", idX, 192);
 
     const tierLabel = getTierLabel(clearanceRank.level);
-    ctx.fillStyle = "rgba(0, 240, 255, 0.10)";
-    ctx.strokeStyle = "rgba(0, 240, 255, 0.35)";
-    ctx.lineWidth = 1;
-    drawRoundRect(ctx, idX, idY + 76, 310, 24, 4);
-    ctx.fill(); ctx.stroke();
-    ctx.font = "11px 'Courier New', monospace";
-    ctx.fillStyle = "#67e8f9";
-    ctx.fillText(tierLabel, idX + 10, idY + 92);
+    ctx.fillStyle = "rgba(0, 240, 255, 0.12)";
+    ctx.strokeStyle = "rgba(0, 240, 255, 0.6)";
+    ctx.lineWidth = 1.5;
+    drawRoundRect(ctx, idX, 208, 330, 30, 6);
+    ctx.fill();
+    ctx.stroke();
+    ctx.font = "bold 12px 'Courier New', monospace";
+    ctx.fillStyle = "#00f0ff";
+    ctx.fillText(tierLabel, idX + 14, 227);
 
-    // Tech chip row
-    const chips = ["AWS", "KUBERNETES", "TERRAFORM", "PROMETHEUS", "DOCKER"];
-    let chipX = idX;
-    const chipY = idY + 110;
-    for (const chip of chips) {
-      const chipW = chip.length * 8.5 + 16;
-      ctx.fillStyle = "rgba(30, 41, 59, 0.8)";
-      ctx.strokeStyle = "rgba(100, 116, 139, 0.5)";
-      ctx.lineWidth = 1;
-      drawRoundRect(ctx, chipX, chipY, chipW, 20, 4);
-      ctx.fill(); ctx.stroke();
-      ctx.font = "bold 9px 'Courier New', monospace";
-      ctx.fillStyle = "rgba(148, 163, 184, 0.9)";
-      ctx.fillText(chip, chipX + 8, chipY + 13);
-      chipX += chipW + 6;
-    }
-
-    // 8. Three Metric Pillars
+    // 8. Three Symmetrical Metric Pillars
     const pillars = [
       {
         label: "PROGRESS",
         value: `${completionPercentage}%`,
-        sub: `${operationalPhasesCount}/12 Phases`,
+        sub: `${operationalPhasesCount} / 12 Phases Defended`,
         color: "#00f0ff",
         glow: "rgba(0, 240, 255, 0.18)",
         showBar: true,
       },
       {
         label: "CORE TASKS",
-        value: `${completedTasksCount}/${totalTasks}`,
+        value: `${completedTasksCount} / ${totalTasks}`,
         sub: "CLI & Config Protocols",
         color: "#38bdf8",
         glow: "rgba(56, 189, 248, 0.18)",
@@ -322,8 +297,8 @@ export const ClearanceBadgeModal: React.FC = () => {
       },
       {
         label: "VERIFIED ARTIFACTS",
-        value: `${verifiedArtifactsCount}/${totalMilestones}`,
-        sub: "GitHub & Live Demos",
+        value: `${verifiedArtifactsCount} / ${totalMilestones}`,
+        sub: "GitHub Repos & Live Demos",
         color: "#00ff9d",
         glow: "rgba(0, 255, 157, 0.18)",
         showBar: false,
@@ -332,9 +307,9 @@ export const ClearanceBadgeModal: React.FC = () => {
 
     const pillarStartX = 40;
     const pillarStartY = 295;
-    const pillarW = 365;
+    const pillarW = 360;
     const pillarH = 115;
-    const pillarGap = 25;
+    const pillarGap = 20;
 
     for (let idx = 0; idx < pillars.length; idx++) {
       const p = pillars[idx];
@@ -345,16 +320,18 @@ export const ClearanceBadgeModal: React.FC = () => {
       ctx.strokeStyle = "rgba(30, 41, 59, 0.9)";
       ctx.lineWidth = 1;
       drawRoundRect(ctx, cx, cy, pillarW, pillarH, 8);
-      ctx.fill(); ctx.stroke();
+      ctx.fill();
+      ctx.stroke();
 
       ctx.strokeStyle = p.color;
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(cx + 8, cy); ctx.lineTo(cx + 80, cy);
+      ctx.moveTo(cx + 8, cy);
+      ctx.lineTo(cx + 80, cy);
       ctx.stroke();
 
-      ctx.font = "bold 10px 'Courier New', monospace";
-      ctx.fillStyle = "rgba(148, 163, 184, 0.9)";
+      ctx.font = "bold 11px 'Courier New', monospace";
+      ctx.fillStyle = "rgba(148, 163, 184, 1)";
       ctx.fillText(p.label, cx + 14, cy + 24);
 
       ctx.save();
@@ -365,8 +342,8 @@ export const ClearanceBadgeModal: React.FC = () => {
       ctx.fillText(p.value, cx + 14, cy + 68);
       ctx.restore();
 
-      ctx.font = "10px 'Courier New', monospace";
-      ctx.fillStyle = "rgba(100, 116, 139, 0.9)";
+      ctx.font = "bold 11px 'Courier New', monospace";
+      ctx.fillStyle = "rgba(226, 232, 240, 0.95)";
       ctx.fillText(p.sub, cx + 14, cy + 90);
 
       if (p.showBar) {
@@ -380,43 +357,27 @@ export const ClearanceBadgeModal: React.FC = () => {
       }
     }
 
-    // 9. Bottom Panel
-    const bottomY = 432;
-    const bottomH = 165;
+    // 9. Bottom Panel (Clean 2-line Metadata & QR Verification)
+    const bottomY = 435;
+    const bottomH = 155;
 
     ctx.fillStyle = "rgba(8, 13, 27, 0.85)";
     ctx.strokeStyle = "rgba(0, 240, 255, 0.22)";
     ctx.lineWidth = 1;
     drawRoundRect(ctx, 40, bottomY, WIDTH - 80, bottomH, 8);
-    ctx.fill(); ctx.stroke();
+    ctx.fill();
+    ctx.stroke();
 
-    const fingerprint = generateFingerprint();
     const now = new Date();
     const issuedStr = now.toISOString().replace("T", " ").slice(0, 19) + " UTC";
 
-    ctx.font = "bold 11px 'Courier New', monospace";
-    ctx.fillStyle = "#00ff9d";
-    ctx.fillText("CRYPTOGRAPHIC CLEARANCE VERIFICATION RECORD", 62, bottomY + 28);
+    ctx.font = "bold 15px 'Courier New', monospace";
+    ctx.fillStyle = "#00f0ff";
+    ctx.fillText("ID: DEV-AFE-2026", 65, bottomY + 68);
 
-    ctx.font = "11px 'Courier New', monospace";
-    ctx.fillStyle = "rgba(203, 213, 225, 0.9)";
-    ctx.fillText(`ID: DEV-AFE-2026`, 62, bottomY + 52);
-    ctx.fillText(`SHA256: 7F4B-${fingerprint}`, 62, bottomY + 72);
-    ctx.fillText(`ISSUED: ${issuedStr}`, 62, bottomY + 92);
-
-    ctx.fillStyle = "rgba(0, 240, 255, 0.9)";
-    ctx.fillText("HOST: DEV-AMR-ELSHERIF / ULTIMATE-DEVOPS-TRACKER", 62, bottomY + 114);
-
-    ctx.font = "10px 'Courier New', monospace";
-    ctx.fillStyle = "rgba(100, 116, 139, 0.8)";
-    ctx.fillText(
-      "ARCHITECTURE: 132 TASKS • 12 PHASES • 13 MILESTONES • GRADUATION CAPSTONE",
-      62, bottomY + 136
-    );
-    ctx.fillText(
-      "PRODUCED BY DEVOPS COMMAND CENTER // SECURE BROWSER PERSISTENCE ENGINE",
-      62, bottomY + 152
-    );
+    ctx.font = "bold 13px 'Courier New', monospace";
+    ctx.fillStyle = "rgba(226, 232, 240, 0.95)";
+    ctx.fillText(`ISSUED: ${issuedStr}`, 65, bottomY + 102);
 
     // QR Code
     try {
@@ -427,7 +388,7 @@ export const ClearanceBadgeModal: React.FC = () => {
 
       const qrDataUrl = await QRCode.toDataURL(liveOrigin, {
         margin: 1,
-        width: 130,
+        width: 125,
         color: { dark: "#00f0ff", light: "#050814" },
       });
 
@@ -435,18 +396,18 @@ export const ClearanceBadgeModal: React.FC = () => {
       qrImg.src = qrDataUrl;
       await new Promise<void>((resolve) => { qrImg.onload = () => resolve(); });
 
-      const qrX = WIDTH - 208;
-      const qrY = bottomY + 14;
-      ctx.drawImage(qrImg, qrX, qrY, 130, 130);
+      const qrX = WIDTH - 195;
+      const qrY = bottomY + 12;
+      ctx.drawImage(qrImg, qrX, qrY, 125, 125);
 
       ctx.strokeStyle = "rgba(0, 240, 255, 0.4)";
       ctx.lineWidth = 1.5;
-      ctx.strokeRect(qrX - 2, qrY - 2, 134, 134);
+      ctx.strokeRect(qrX - 2, qrY - 2, 129, 129);
 
-      ctx.font = "bold 9px 'Courier New', monospace";
+      ctx.font = "bold 8px 'Courier New', monospace";
       ctx.fillStyle = "#00f0ff";
       ctx.textAlign = "center";
-      ctx.fillText("SCAN TO VERIFY LIVE TELEMETRY", qrX + 65, bottomY + 158);
+      ctx.fillText("SCAN TO VERIFY LIVE TELEMETRY", qrX + 62, bottomY + 148);
       ctx.textAlign = "left";
     } catch {
       // Fallback if QR fails silently
@@ -462,7 +423,6 @@ export const ClearanceBadgeModal: React.FC = () => {
     operationalPhasesCount,
     verifiedArtifactsCount,
     customAvatarUrl,
-    generateFingerprint,
   ]);
 
   useEffect(() => {
