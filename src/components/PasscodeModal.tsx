@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useRoadmap, MASTER_PIN } from "@/context/RoadmapContext";
+import { useRoadmap } from "@/context/RoadmapContext";
 import { ShieldCheck, ShieldAlert, KeyRound, X, Eye, EyeOff } from "lucide-react";
 import { soundFx } from "@/lib/audio";
 
@@ -100,12 +100,6 @@ const PasscodeModalDialog: React.FC<DialogProps> = ({ onClose, onAuthenticate })
           <p className="text-xs text-slate-300 leading-relaxed">
             Enter the Commander Master PIN to enable write authorization, persist completed milestones, and edit task telemetry.
           </p>
-          <div className="mt-2.5 p-2 rounded bg-cyan-950/30 border border-cyan-500/30 text-[11px] font-mono text-cyan-300 flex items-center justify-between">
-            <span>DEFAULT MASTER PIN:</span>
-            <span className="font-bold text-cyan-100 bg-cyan-900/50 px-2 py-0.5 rounded tracking-widest border border-cyan-500/40">
-              {MASTER_PIN}
-            </span>
-          </div>
         </div>
 
         {/* Input form */}

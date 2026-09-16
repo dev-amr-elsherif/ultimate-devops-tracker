@@ -59,15 +59,6 @@ export interface CapstoneProject {
   runbookSteps: string[];
 }
 
-export interface TechnologyRadarItem {
-  domain: string;
-  sourceDoc?: string;
-  coreFocus: string;
-  recommendedTools: string[];
-  devopsRelevance: string;
-  suggestedAction: string;
-}
-
 export const ROADMAP_PHASES: Phase[] = [
   // ==========================================
   // PHASE 0: 14 Tasks + 1 Milestone
@@ -3393,46 +3384,3 @@ export const GRADUATION_CAPSTONE: CapstoneProject = {
     "Step 5: If deployment regression is identified, trigger automated rollback to previous Helm release revision."
   ]
 };
-
-export const PERIPHERAL_TECHNOLOGY_RADAR: TechnologyRadarItem[] = [
-  {
-    domain: "Design Systems & UI Engineering",
-    sourceDoc: "design-system.pdf",
-    coreFocus: "Component libraries, design tokens, responsive typography & atomic layout grids",
-    recommendedTools: ["Tailwind CSS", "Radix UI", "Figma Tokens", "Storybook"],
-    devopsRelevance: "Essential for building internal developer platforms (IDPs), admin status dashboards, and developer observability tooling.",
-    suggestedAction: "Adopt unified design tokens for developer dashboards and status portals."
-  },
-  {
-    domain: "Data Structures & Algorithms",
-    sourceDoc: "datastructures-and-algorithms.pdf",
-    coreFocus: "Hash tables, trees, graph traversal, asymptotic Big-O efficiency & queuing theory",
-    recommendedTools: ["Python", "Go", "Graphviz"],
-    devopsRelevance: "Directly powers service mesh routing algorithms, dependency DAG resolution in build engines, and rate-limiting token buckets.",
-    suggestedAction: "Master graph DAG traversal for CI/CD dependencies and hash ring algorithms for consistent load balancing."
-  },
-  {
-    domain: "Distributed System Design",
-    sourceDoc: "System Design Reference",
-    coreFocus: "CAP theorem, eventual consistency, database sharding, caching tiers & message brokers",
-    recommendedTools: ["Kafka", "RabbitMQ", "Redis Cluster", "Cassandra"],
-    devopsRelevance: "Foundational for configuring high availability, cross-region replication, fault domains, and asynchronous event streams.",
-    suggestedAction: "Design disaster recovery topologies with strict Recovery Point Objectives (RPO) and Recovery Time Objectives (RTO)."
-  },
-  {
-    domain: "Machine Learning Operations (MLOps)",
-    sourceDoc: "MLOps Architecture",
-    coreFocus: "Model registries, feature stores, data versioning, GPU orchestration & inference scaling",
-    recommendedTools: ["Kubeflow", "MLflow", "DVC", "Triton Server"],
-    devopsRelevance: "High-growth DevOps specialization managing heavy GPU compute clusters, distributed training jobs, and real-time model serving.",
-    suggestedAction: "Extend Kubernetes knowledge to deploy Kubeflow pipelines and optimize GPU scheduling with NVIDIA device plugins."
-  },
-  {
-    domain: "Enterprise DevSecOps & Governance",
-    sourceDoc: "DevSecOps Benchmark",
-    coreFocus: "Shift-left security, Software Bill of Materials (SBOM), secret detection & runtime protection",
-    recommendedTools: ["Trivy", "Checkov", "Falco", "HashiCorp Vault", "Cosign"],
-    devopsRelevance: "Mandatory compliance for modern enterprise engineering teams to prevent software supply-chain compromises.",
-    suggestedAction: "Integrate automated container image signing (Cosign) and runtime intrusion detection (Falco) into the cluster."
-  }
-];

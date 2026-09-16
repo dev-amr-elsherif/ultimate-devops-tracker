@@ -8,7 +8,6 @@ import { ExecutionGraph } from "@/components/ExecutionGraph";
 import { FilterBar } from "@/components/FilterBar";
 import { PhaseCard } from "@/components/PhaseCard";
 import { CapstoneCard } from "@/components/CapstoneCard";
-import { PeripheralRadar } from "@/components/PeripheralRadar";
 import {
   Terminal,
   Sparkles,
@@ -122,9 +121,6 @@ export default function Home() {
       {(activeFilter === "all" || activeFilter === "milestones") && (
         <CapstoneCard />
       )}
-
-      {/* Peripheral Technology Radar */}
-      <PeripheralRadar />
 
       {/* Terminal Footer */}
       <footer className="w-full border-t border-slate-800 bg-slate-950/90 py-8 px-4 sm:px-6 lg:px-8 mt-12 text-center font-mono text-xs text-slate-400">

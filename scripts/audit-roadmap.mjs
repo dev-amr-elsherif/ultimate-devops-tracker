@@ -27,7 +27,7 @@ try {
 
   fs.writeFileSync(tempMjsPath, transpiled.outputText, "utf-8");
 
-  const { ROADMAP_PHASES, GRADUATION_CAPSTONE, PERIPHERAL_TECHNOLOGY_RADAR } = await import(
+  const { ROADMAP_PHASES, GRADUATION_CAPSTONE } = await import(
     `file://${tempMjsPath.replace(/\\/g, "/")}`
   );
 
@@ -53,15 +53,7 @@ try {
     console.log(`  - Runbook Steps: ${GRADUATION_CAPSTONE.runbookSteps?.length || 0}`);
   }
 
-  // Check 3: Peripheral Radar
-  if (!Array.isArray(PERIPHERAL_TECHNOLOGY_RADAR) || PERIPHERAL_TECHNOLOGY_RADAR.length !== 5) {
-    errors.push(`Expected 5 Peripheral Radar items, found ${PERIPHERAL_TECHNOLOGY_RADAR?.length}`);
-    auditPassed = false;
-  } else {
-    console.log(`✓ Peripheral Technology Radar items: ${PERIPHERAL_TECHNOLOGY_RADAR.length}`);
-  }
-
-  // Check 4: Granular Tasks Count & Audit per Phase
+  // Check 3: Granular Tasks Count & Audit per Phase
   console.log("\n-------------------------------------------------");
   console.log(" PHASE-BY-PHASE TASK BREAKDOWN");
   console.log("-------------------------------------------------");

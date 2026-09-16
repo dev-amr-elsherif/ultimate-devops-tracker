@@ -11,12 +11,11 @@ An enterprise-grade, sci-fi command terminal web application and interactive cur
 - **Synthesized Web Audio Engine**: Browser-native Web Audio API oscillator synthesis generating sci-fi UI clicks, access denial alarms, holographic activation chimes, and milestone celebration fanfares without external audio files.
 - **Dual Security Model**:
   - **Observer Mode (Default)**: Public read-only portfolio tracker. Task checkboxes are locked; clicking triggers an "Access Denied: Commander Mode authentication required" alert.
-  - **Commander Mode (Authenticated)**: Unlocked via holographic lock button or `Ctrl + Shift + A`. Master PIN: `010135`. Unlocks task editing, state persistence in `localStorage`, JSON snapshot export, and milestone defense triggers.
+  - **Commander Mode (Authenticated)**: Unlocked via holographic lock button or `Ctrl + Shift + A`. Configured via `NEXT_PUBLIC_COMMANDER_PIN`. Unlocks task editing, state persistence in `localStorage`, JSON snapshot export, and milestone defense triggers.
 - **Telemetry HUD**: Real-time progress percentage, operational phases count (100% complete), task counts, remaining milestones, and dynamic Clearance Rank badges (`Cadet` ➔ `SysAdmin` ➔ `Cloud Architect` ➔ `DevOps Lead`).
 - **Interactive Execution Topology**: Visual SVG flowchart and raw ASCII topology mapping sequential phases, parallel morning/evening tracks, convergence gates, and the final capstone trial.
 - **Complete 12-Phase Curriculum**: Fully typed schema with real-world production bash commands, Dockerfiles, Terraform HCL, Kubernetes YAML, and acceptance criteria.
 - **Graduation Capstone**: "Production Multi-Tier Cloud Delivery System" specification with defense evaluation checklist and repository tree layout.
-- **Peripheral Technology Radar**: Guidance matrix covering Design Systems (`design-system.pdf`), Data Structures & Algorithms (`datastructures-and-algorithms.pdf`), Distributed System Design, MLOps, and DevSecOps.
 
 ---
 
@@ -77,7 +76,7 @@ npm run start
 
 ## 🔐 Commander Mode Authentication
 
-- Default Passcode: `010135`
+- Configured via environment variable: `NEXT_PUBLIC_COMMANDER_PIN` (see `.env.example`).
 - Hotkey: Press `Ctrl + Shift + A` anywhere on the page to summon the Commander Authentication dialog.
 - Alternatively, click the **OBSERVER MODE (UNLOCK)** button in the top HUD.
 
