@@ -276,7 +276,7 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     const downloadPromise = page.waitForEvent("download");
     await page.getByTestId("export-snapshot-btn").click();
     const download = await downloadPromise;
-    expect(download.suggestedFilename()).toMatch(/devops-(?:complete-roadmap|telemetry).*\.json/);
+    expect(download.suggestedFilename()).toMatch(/^devops-complete-roadmap-.*\.json$/);
 
     // Verify complete curriculum tree payload
     const stream = await download.createReadStream();
@@ -286,11 +286,33 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
         chunks.push(chunk as Buffer);
       }
       const json = JSON.parse(Buffer.concat(chunks).toString("utf-8"));
+      const totalExportedTasks = json.phases?.reduce((sum: number, p: { tasks: unknown[] }) => sum + (p.tasks?.length || 0), 0) ?? 0;
+
+      console.log("--- TEST 7 SNAPSHOT AUDIT ---");
+      console.log("Filename:", download.suggestedFilename());
+      console.log("schemaVersion:", json.schemaVersion);
+      console.log("Phases count:", json.phases?.length);
+      console.log("Total tasks count:", totalExportedTasks);
+      console.log("Engineer name:", json.engineer?.name);
+
       expect(json.schemaVersion).toBe("3.0.0");
       expect(json.phases).toHaveLength(12);
-      const totalExportedTasks = json.phases.reduce((sum: number, p: { tasks: unknown[] }) => sum + p.tasks.length, 0);
       expect(totalExportedTasks).toBe(132);
       expect(json.engineer.name).toBe("Amr Fathy Elsherif");
+
+      // Verify task fields schema compliance
+      for (const phase of json.phases) {
+        for (const task of phase.tasks) {
+          expect(typeof task.taskId).toBe("string");
+          expect(typeof task.taskNumber).toBe("string");
+          expect(typeof task.title).toBe("string");
+          expect(typeof task.isCompleted).toBe("boolean");
+          expect("completedAt" in task).toBe(true);
+          expect("userNotes" in task).toBe(true);
+          expect("miniTasks" in task).toBe(true);
+          expect("proofOfWork" in task).toBe(true);
+        }
+      }
     }
 
     // Verify Danger Zone Reset / Purge with ConfirmModal

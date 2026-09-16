@@ -98,7 +98,7 @@ export interface FullRoadmapArchive {
         liveUrl?: string;
         notes?: string;
         updatedAt?: string;
-      };
+      } | null;
     }>;
     milestone?: {
       milestoneId: string;
@@ -116,7 +116,7 @@ export interface FullRoadmapArchive {
 }
 
 export interface RoadmapFullSnapshot {
-  schemaVersion: "2.1.0";
+  schemaVersion?: string;
   exportedAt: string;
   engine: "Ultimate DevOps Tracker Pro";
   user?: {
@@ -281,7 +281,7 @@ export const checkCommanderStatus = (): boolean => {
   return false;
 };
 
-// Helper to normalize snapshot payloads across v3.0.0 FullRoadmapArchive, v2.1.0 RoadmapFullSnapshot, and legacy v1.0
+// Helper to normalize snapshot payloads across v3.0.0 FullRoadmapArchive, RoadmapFullSnapshot, and legacy telemetry
 export function extractTelemetryData(raw: unknown): {
   taskIds: string[] | null;
   milestoneIds: string[] | null;
@@ -353,7 +353,7 @@ export function extractTelemetryData(raw: unknown): {
     }
   }
 
-  // 2. Check state object (v2.1.0 or custom)
+  // 2. Check state object (state container or custom)
   if (data.state && typeof data.state === "object") {
     const stateObj = data.state as Record<string, unknown>;
     if (Array.isArray(stateObj.completedTaskIds)) {
@@ -862,16 +862,14 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
           completedAt: isDone ? (detail?.completedAt || nowIso) : null,
           userNotes: detail?.userNotes || "",
           miniTasks: miniTasksFormatted,
-          ...(taskArtifact
+          proofOfWork: taskArtifact
             ? {
-                proofOfWork: {
-                  repoUrl: taskArtifact.repoUrl,
-                  liveUrl: taskArtifact.liveUrl,
-                  notes: taskArtifact.notes,
-                  updatedAt: taskArtifact.updatedAt,
-                },
+                repoUrl: taskArtifact.repoUrl,
+                liveUrl: taskArtifact.liveUrl,
+                notes: taskArtifact.notes,
+                updatedAt: taskArtifact.updatedAt,
               }
-            : {}),
+            : null,
         };
       });
 

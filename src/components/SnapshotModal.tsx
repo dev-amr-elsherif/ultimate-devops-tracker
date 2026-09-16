@@ -8,11 +8,11 @@ import {
   FullRoadmapArchive,
   extractTelemetryData,
 } from "@/context/RoadmapContext";
-import { Upload, FileUp, X, CheckCircle2, AlertTriangle, FileJson, ShieldAlert } from "lucide-react";
+import { Upload, FileUp, X, CheckCircle2, AlertTriangle, FileJson, ShieldAlert, Download } from "lucide-react";
 import { soundFx } from "@/lib/audio";
 
 function isFullSnapshot(snapshot: TelemetrySnapshot): snapshot is RoadmapFullSnapshot {
-  return "schemaVersion" in snapshot && snapshot.schemaVersion === "2.1.0";
+  return "state" in snapshot && !!(snapshot as RoadmapFullSnapshot).state && "telemetry" in snapshot;
 }
 
 function isArchiveSnapshot(snapshot: TelemetrySnapshot): snapshot is FullRoadmapArchive {
@@ -27,6 +27,7 @@ export const SnapshotModal: React.FC = () => {
     connectDrive,
     importSnapshot,
     promptResetProgress,
+    exportSnapshot,
   } = useRoadmap();
 
   useEffect(() => {
@@ -54,6 +55,7 @@ export const SnapshotModal: React.FC = () => {
         promptResetProgress();
       }}
       onImport={importSnapshot}
+      onExport={exportSnapshot}
     />
   );
 };
@@ -64,6 +66,7 @@ interface SnapshotDialogProps {
   onPromptAuth: () => void;
   onPromptReset: () => void;
   onImport: (input: string | TelemetrySnapshot) => boolean;
+  onExport: () => void;
 }
 
 const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
@@ -72,6 +75,7 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
   onPromptAuth,
   onPromptReset,
   onImport,
+  onExport,
 }) => {
   const [jsonInput, setJsonInput] = useState("");
   const [parsedPreview, setParsedPreview] = useState<TelemetrySnapshot | null>(null);
@@ -158,6 +162,27 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
           </button>
         </div>
 
+        {/* Quick Export Action Card */}
+        <div className="mb-4 p-3 rounded-xl bg-slate-900/60 border border-cyan-500/20 flex items-center justify-between">
+          <div>
+            <div className="text-xs font-mono font-bold text-slate-200">
+              EXPORT COMPLETE CURRICULUM ARCHIVE
+            </div>
+            <div className="text-[10px] font-mono text-slate-400">
+              Download live v3.0.0 JSON snapshot (12 phases, 132 tasks)
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onExport}
+            aria-label="Export complete curriculum archive snapshot"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cyan-500/40 bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-300 font-mono text-xs font-bold transition-all focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
+          >
+            <Download className="w-3.5 h-3.5" />
+            EXPORT SNAPSHOT
+          </button>
+        </div>
+
         {!isCommander && (
           <div className="mb-4 p-3 rounded-lg bg-rose-950/40 border border-rose-500/40 flex items-start gap-2 text-rose-300 text-xs font-mono">
             <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
@@ -199,7 +224,7 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
               )}
             </div>
             <div className="text-[10px] font-mono text-slate-500 mt-1">
-              Supports Complete Roadmap Archive v3.0.0, Full Telemetry v2.1.0 & Legacy Payloads
+              Supports Complete Roadmap Archive v3.0.0 & Legacy Telemetry Payloads
             </div>
           </div>
 
@@ -245,7 +270,7 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
               milestoneCount = parsedPreview.state.completedMilestoneIds.length;
               rank = parsedPreview.telemetry.clearanceRank;
               progress = parsedPreview.telemetry.completionPercentage;
-              schema = parsedPreview.schemaVersion;
+              schema = parsedPreview.schemaVersion || "Legacy";
             } else {
               taskCount =
                 parsedPreview.completedTaskIds?.length ??
