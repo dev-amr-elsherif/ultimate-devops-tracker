@@ -506,7 +506,7 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     // 3. Assert modal opens and metadata is rendered
     const modalHeading = page.locator("text=Holographic Clearance ID Generator");
     await expect(modalHeading).toBeVisible();
-    await expect(page.locator("text=Amr Elsherif").first()).toBeVisible();
+    await expect(page.locator("text=Amr Fathy Elsherif").first()).toBeVisible();
 
     // Assert canvas is rendered
     const canvas = page.getByTestId("badge-canvas");

@@ -133,6 +133,10 @@ interface RoadmapContextType {
   revokeCommander: () => void;
   setTestCommander: (enabled: boolean) => void;
 
+  // Custom avatar (Commander-only upload)
+  customAvatarUrl: string | null;
+  updateCustomAvatar: (dataUrl: string) => void;
+
   completedTaskIds: Set<string>;
   completedMilestoneIds: Set<string>;
   toggleTask: (taskId: string, phaseId: string) => void;
@@ -186,6 +190,7 @@ interface RoadmapContextType {
 const STORAGE_KEY = "devops_roadmap_progress";
 const ALT_STORAGE_KEY = "devops_roadmap_state";
 const ARTIFACTS_STORAGE_KEY = "devops_roadmap_artifacts";
+const AVATAR_STORAGE_KEY = "devops_roadmap_avatar";
 export const TASK_DETAILS_STORAGE_KEY = "devops_roadmap_task_details";
 export const AUTHORIZED_COMMANDERS = [
   "dev.amrelsherif@gmail.com",
@@ -279,6 +284,16 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [driveUser, setDriveUser] = useState<DriveUser | null>(null);
   const [driveLastSyncedAt, setDriveLastSyncedAt] = useState<string | null>(null);
   const driveAccessTokenRef = useRef<string | null>(null);
+
+  // Custom avatar URL (Commander-only upload, persisted to localStorage)
+  const [customAvatarUrl, setCustomAvatarUrl] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      return localStorage.getItem(AVATAR_STORAGE_KEY) || null;
+    } catch {
+      return null;
+    }
+  });
 
   // Restore Drive session and Commander state from storage after initial mount
   useEffect(() => {
@@ -392,6 +407,19 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const nextMute = soundFx.toggleMute();
     setIsAudioMuted(nextMute);
   }, []);
+
+  const updateCustomAvatar = useCallback(
+    (dataUrl: string) => {
+      if (!isCommander) return;
+      setCustomAvatarUrl(dataUrl);
+      try {
+        localStorage.setItem(AVATAR_STORAGE_KEY, dataUrl);
+      } catch {
+        // Ignore quota errors for large data URLs
+      }
+    },
+    [isCommander]
+  );
 
   // Task check toggle logic with dual security
   const toggleTask = useCallback(
@@ -1056,6 +1084,8 @@ function extractTelemetryData(raw: unknown): {
         logoutCommander,
         revokeCommander,
         setTestCommander,
+        customAvatarUrl,
+        updateCustomAvatar,
         completedTaskIds,
         completedMilestoneIds,
         toggleTask,
