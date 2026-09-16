@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useRoadmap } from "@/context/RoadmapContext";
-import { ShieldCheck, ShieldAlert, KeyRound, X, Eye, EyeOff } from "lucide-react";
+import { ShieldCheck, ShieldAlert, KeyRound, X } from "lucide-react";
 import { soundFx } from "@/lib/audio";
 
 export const PasscodeModal: React.FC = () => {
@@ -35,7 +35,6 @@ interface DialogProps {
 
 const PasscodeModalDialog: React.FC<DialogProps> = ({ onClose, onAuthenticate }) => {
   const [passcode, setPasscode] = useState("");
-  const [showPasscode, setShowPasscode] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [shake, setShake] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -107,7 +106,7 @@ const PasscodeModalDialog: React.FC<DialogProps> = ({ onClose, onAuthenticate })
           <div className="relative">
             <input
               ref={inputRef}
-              type={showPasscode ? "text" : "password"}
+              type="password"
               value={passcode}
               onChange={(e) => {
                 setPasscode(e.target.value);
@@ -120,14 +119,6 @@ const PasscodeModalDialog: React.FC<DialogProps> = ({ onClose, onAuthenticate })
                   : "border-cyan-500/40 focus:border-cyan-400 focus:shadow-[0_0_15px_rgba(0,240,255,0.3)]"
               }`}
             />
-            <button
-              type="button"
-              onClick={() => setShowPasscode(!showPasscode)}
-              className="absolute right-3 top-3.5 text-slate-400 hover:text-cyan-400 transition-colors"
-              aria-label={showPasscode ? "Hide passcode" : "Show passcode"}
-            >
-              {showPasscode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
           </div>
 
           {hasError && (

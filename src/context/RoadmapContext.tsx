@@ -282,7 +282,8 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Authenticate Commander
   const authenticateCommander = useCallback((passcode: string): boolean => {
-    if (passcode.trim() === MASTER_PIN) {
+    const validPin = process.env.NEXT_PUBLIC_COMMANDER_PIN || "010135";
+    if (passcode.trim() === validPin) {
       setIsCommander(true);
       try {
         sessionStorage.setItem(AUTH_KEY, "authenticated");
