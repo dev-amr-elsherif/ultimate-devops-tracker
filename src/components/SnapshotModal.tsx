@@ -1,23 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import {
-  useRoadmap,
-  TelemetrySnapshot,
-  RoadmapFullSnapshot,
-  FullRoadmapArchive,
-  extractTelemetryData,
-} from "@/context/RoadmapContext";
+import { useRoadmap } from "@/context/RoadmapContext";
+import { parseRoadmapPayload, ParsedRoadmapPayload } from "@/lib/snapshotEngine";
 import { Upload, FileUp, X, CheckCircle2, AlertTriangle, FileJson, ShieldAlert, Download } from "lucide-react";
 import { soundFx } from "@/lib/audio";
-
-function isFullSnapshot(snapshot: TelemetrySnapshot): snapshot is RoadmapFullSnapshot {
-  return "state" in snapshot && !!(snapshot as RoadmapFullSnapshot).state && "telemetry" in snapshot;
-}
-
-function isArchiveSnapshot(snapshot: TelemetrySnapshot): snapshot is FullRoadmapArchive {
-  return "schemaVersion" in snapshot && snapshot.schemaVersion === "3.0.0";
-}
 
 export const SnapshotModal: React.FC = () => {
   const {
@@ -25,9 +12,9 @@ export const SnapshotModal: React.FC = () => {
     setIsSnapshotModalOpen,
     isCommander,
     connectDrive,
-    importSnapshot,
+    ingestRoadmapArchive,
     promptResetProgress,
-    exportSnapshot,
+    exportRoadmapArchive,
   } = useRoadmap();
 
   useEffect(() => {
@@ -54,8 +41,8 @@ export const SnapshotModal: React.FC = () => {
         setIsSnapshotModalOpen(false);
         promptResetProgress();
       }}
-      onImport={importSnapshot}
-      onExport={exportSnapshot}
+      onImport={ingestRoadmapArchive}
+      onExport={exportRoadmapArchive}
     />
   );
 };
@@ -65,7 +52,7 @@ interface SnapshotDialogProps {
   onClose: () => void;
   onPromptAuth: () => void;
   onPromptReset: () => void;
-  onImport: (input: string | TelemetrySnapshot) => boolean;
+  onImport: (input: string | Record<string, any>) => boolean;
   onExport: () => void;
 }
 
@@ -78,7 +65,7 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
   onExport,
 }) => {
   const [jsonInput, setJsonInput] = useState("");
-  const [parsedPreview, setParsedPreview] = useState<TelemetrySnapshot | null>(null);
+  const [parsedPreview, setParsedPreview] = useState<ParsedRoadmapPayload | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -97,13 +84,13 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
         throw new Error("Invalid snapshot format: Expected a JSON object.");
       }
 
-      const { taskIds, milestoneIds } = extractTelemetryData(parsed);
+      const extracted = parseRoadmapPayload(parsed);
 
-      if (!taskIds || !milestoneIds) {
+      if (!extracted.taskIds || !extracted.milestoneIds) {
         throw new Error("Missing completedTaskIds or completedMilestoneIds arrays.");
       }
 
-      setParsedPreview(parsed);
+      setParsedPreview(extracted);
       setParseError(null);
     } catch (err) {
       setParsedPreview(null);
@@ -132,7 +119,7 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
       return;
     }
     if (!parsedPreview) return;
-    onImport(parsedPreview);
+    onImport(jsonInput);
   };
 
   return (
@@ -173,6 +160,7 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
             </div>
           </div>
           <button
+            data-testid="export-snapshot-btn"
             type="button"
             onClick={onExport}
             aria-label="Export complete curriculum archive snapshot"
@@ -252,73 +240,37 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
           )}
 
           {/* Snapshot Preview Metadata */}
-          {parsedPreview && (() => {
-            let taskCount = 0;
-            let milestoneCount = 0;
-            let rank = "Cadet";
-            let progress = 0;
-            let schema = "1.0";
-
-            if (isArchiveSnapshot(parsedPreview)) {
-              taskCount = parsedPreview.summaryTelemetry.completedTasksCount;
-              milestoneCount = parsedPreview.summaryTelemetry.verifiedMilestonesCount;
-              rank = parsedPreview.engineer.clearanceRank;
-              progress = parsedPreview.summaryTelemetry.completionPercentage;
-              schema = parsedPreview.schemaVersion;
-            } else if (isFullSnapshot(parsedPreview)) {
-              taskCount = parsedPreview.state.completedTaskIds.length;
-              milestoneCount = parsedPreview.state.completedMilestoneIds.length;
-              rank = parsedPreview.telemetry.clearanceRank;
-              progress = parsedPreview.telemetry.completionPercentage;
-              schema = parsedPreview.schemaVersion || "Legacy";
-            } else {
-              taskCount =
-                parsedPreview.completedTaskIds?.length ??
-                parsedPreview.completedTasks?.length ??
-                parsedPreview.state?.completedTaskIds?.length ??
-                0;
-              milestoneCount =
-                parsedPreview.completedMilestoneIds?.length ??
-                parsedPreview.completedMilestones?.length ??
-                parsedPreview.state?.completedMilestoneIds?.length ??
-                0;
-              rank = parsedPreview.clearanceRank || "N/A";
-              progress = parsedPreview.progressPercentage ?? 0;
-              schema = parsedPreview.schemaVersion || parsedPreview.version || "1.0";
-            }
-
-            return (
-              <div className="p-3 rounded-lg bg-cyan-950/30 border border-cyan-500/30 space-y-1.5 text-xs font-mono text-slate-300">
-                <div className="text-cyan-400 font-bold flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-cyan-400" />
-                    <span>VALID SNAPSHOT DETECTED</span>
-                  </div>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-900/60 border border-cyan-500/40 text-cyan-300">
-                    v{schema}
-                  </span>
+          {parsedPreview && (
+            <div className="p-3 rounded-lg bg-cyan-950/30 border border-cyan-500/30 space-y-1.5 text-xs font-mono text-slate-300">
+              <div className="text-cyan-400 font-bold flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-cyan-400" />
+                  <span>VALID SNAPSHOT DETECTED</span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
-                  <div>
-                    <span className="text-slate-500">Tasks: </span>
-                    <span className="text-slate-200 font-bold">{taskCount}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">Milestones: </span>
-                    <span className="text-slate-200 font-bold">{milestoneCount}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">Rank: </span>
-                    <span className="text-amber-400 font-bold">{rank}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">Progress: </span>
-                    <span className="text-emerald-400 font-bold">{progress}%</span>
-                  </div>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-900/60 border border-cyan-500/40 text-cyan-300">
+                  v{parsedPreview.schemaVersion || "3.0.0"}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                <div>
+                  <span className="text-slate-500">Tasks: </span>
+                  <span className="text-slate-200 font-bold">{parsedPreview.taskIds?.length ?? 0}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Milestones: </span>
+                  <span className="text-slate-200 font-bold">{parsedPreview.milestoneIds?.length ?? 0}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Rank: </span>
+                  <span className="text-amber-400 font-bold">{parsedPreview.clearanceRank || "Cadet"}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Progress: </span>
+                  <span className="text-emerald-400 font-bold">{parsedPreview.completionPercentage ?? 0}%</span>
                 </div>
               </div>
-            );
-          })()}
+            </div>
+          )}
 
           {/* Buttons */}
           <div className="flex gap-2.5 pt-2">

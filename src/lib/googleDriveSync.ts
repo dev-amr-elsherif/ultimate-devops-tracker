@@ -6,7 +6,9 @@
  * Target: devops-command-telemetry.json
  */
 
-import { TelemetrySnapshot } from "@/context/RoadmapContext";
+import { FullRoadmapArchive } from "@/lib/snapshotEngine";
+
+export type DriveSyncPayload = FullRoadmapArchive | Record<string, any>;
 
 export const DRIVE_FILE_NAME = "devops-command-telemetry.json";
 export const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.appdata";
@@ -165,7 +167,7 @@ export async function fetchDriveUserInfo(accessToken: string): Promise<DriveUser
 /**
  * Searches appDataFolder for devops-command-telemetry.json and returns its contents
  */
-export async function pullFromDrive(accessToken: string): Promise<TelemetrySnapshot | null> {
+export async function pullFromDrive(accessToken: string): Promise<DriveSyncPayload | null> {
   const query = encodeURIComponent(`name = '${DRIVE_FILE_NAME}' and trashed = false`);
   const searchUrl = `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${query}&fields=files(id,name,modifiedTime)`;
 
@@ -200,8 +202,8 @@ export async function pullFromDrive(accessToken: string): Promise<TelemetrySnaps
     throw new Error(`Failed to download telemetry file from Google Drive (HTTP ${contentRes.status})`);
   }
 
-  const snapshot: TelemetrySnapshot = await contentRes.json();
-  return snapshot;
+  const payload: DriveSyncPayload = await contentRes.json();
+  return payload;
 }
 
 /**
@@ -209,7 +211,7 @@ export async function pullFromDrive(accessToken: string): Promise<TelemetrySnaps
  */
 export async function pushToDrive(
   accessToken: string,
-  snapshot: TelemetrySnapshot
+  payload: DriveSyncPayload
 ): Promise<void> {
   const query = encodeURIComponent(`name = '${DRIVE_FILE_NAME}' and trashed = false`);
   const searchUrl = `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${query}&fields=files(id)`;
@@ -229,7 +231,7 @@ export async function pushToDrive(
 
   const listData = await listRes.json();
   const existingFile = listData.files?.[0];
-  const payloadStr = JSON.stringify(snapshot, null, 2);
+  const payloadStr = JSON.stringify(payload, null, 2);
 
   if (existingFile && existingFile.id) {
     // Update existing file content

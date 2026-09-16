@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useRoadmap, FilterCategory } from "@/context/RoadmapContext";
-import { Search, Download, Filter, Layers, Zap, Trophy, Upload } from "lucide-react";
+import { Search, Filter, Layers, Zap, Trophy, Upload } from "lucide-react";
 import { soundFx } from "@/lib/audio";
 
 export const FilterBar: React.FC = () => {
@@ -11,7 +11,6 @@ export const FilterBar: React.FC = () => {
     setActiveFilter,
     searchQuery,
     setSearchQuery,
-    exportSnapshot,
     setIsSnapshotModalOpen,
   } = useRoadmap();
 
@@ -98,19 +97,8 @@ export const FilterBar: React.FC = () => {
           </button>
         </div>
 
-        {/* Snapshot export, ingest & reset utilities */}
+        {/* Snapshot utilities */}
         <div className="flex items-center gap-2 border-t md:border-t-0 md:border-l border-slate-800 pt-2 md:pt-0 md:pl-3">
-          <button
-            data-testid="export-snapshot-btn"
-            onClick={exportSnapshot}
-            aria-label="Export and download JSON snapshot of current progress"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-cyan-300 font-mono text-xs transition-all focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
-            title="Download JSON Snapshot of current progress"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">EXPORT</span>
-          </button>
-
           <button
             data-testid="ingest-snapshot-btn"
             onClick={() => {

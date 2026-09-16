@@ -272,11 +272,19 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     await page.waitForLoadState("networkidle");
     await expect(page.locator("text=/4 \\/ 132/")).toBeVisible();
 
+    // Open Snapshot modal to access official Export button
+    await ingestBtn.click();
+    await expect(modalHeading).toBeVisible();
+
     // Verify Export button triggers download
     const downloadPromise = page.waitForEvent("download");
     await page.getByTestId("export-snapshot-btn").click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(/^devops-complete-roadmap-.*\.json$/);
+
+    // Close modal to prepare for next test assertions
+    await page.locator("button[aria-label='Close modal']").click();
+    await expect(modalHeading).not.toBeVisible();
 
     // Verify complete curriculum tree payload
     const stream = await download.createReadStream();

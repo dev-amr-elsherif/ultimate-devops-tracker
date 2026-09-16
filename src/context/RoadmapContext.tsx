@@ -22,6 +22,12 @@ import {
   pushToDrive,
   disconnectDrive,
 } from "@/lib/googleDriveSync";
+import {
+  FullRoadmapArchive,
+  generateCompleteArchive,
+  downloadArchiveFile,
+  parseRoadmapPayload,
+} from "@/lib/snapshotEngine";
 
 export function useIsMounted(): boolean {
   const [mounted, setMounted] = useState(false);
@@ -55,130 +61,6 @@ export interface RoadmapProgressState {
   lastUpdated: string;
 }
 
-export interface FullRoadmapArchive {
-  schemaVersion: "3.0.0";
-  exportedAt: string;
-  engine: "Ultimate DevOps Tracker Pro";
-  engineer: {
-    name: string; // "Amr Fathy Elsherif"
-    email: string;
-    role: "commander" | "observer";
-    clearanceRank: string;
-    avatarUrl: string | null;
-  };
-  summaryTelemetry: {
-    completionPercentage: number;
-    completedTasksCount: number;
-    totalTasksCount: number; // 132
-    verifiedMilestonesCount: number;
-    totalMilestonesCount: number; // 13
-  };
-  // THE ENTIRE HYDRATED ROADMAP TREE:
-  phases: Array<{
-    phaseId: string;
-    phaseNumber: number;
-    title: string;
-    description: string;
-    track: "sequential" | "parallel";
-    isFullyDefended: boolean;
-    phaseProgress: number; // 0 to 100%
-    tasks: Array<{
-      taskId: string;
-      taskNumber: string;
-      title: string;
-      description?: string;
-      commands?: string[];
-      category?: string;
-      isCompleted: boolean; // TRUE for completed, FALSE for pending
-      completedAt: string | null;
-      userNotes: string;
-      miniTasks: Record<string, { title: string; completed: boolean }>;
-      proofOfWork?: {
-        repoUrl?: string;
-        liveUrl?: string;
-        notes?: string;
-        updatedAt?: string;
-      } | null;
-    }>;
-    milestone?: {
-      milestoneId: string;
-      title: string;
-      deliverable: string;
-      isVerified: boolean;
-      verifiedAt: string | null;
-    };
-  }>;
-  metadata: {
-    generator: "DevOps Command Center Enterprise";
-    tags: string[];
-    [key: string]: unknown;
-  };
-}
-
-export interface RoadmapFullSnapshot {
-  schemaVersion?: string;
-  exportedAt: string;
-  engine: "Ultimate DevOps Tracker Pro";
-  user?: {
-    email?: string;
-    role: "commander" | "observer";
-  };
-  telemetry: {
-    completionPercentage: number;
-    completedTasksCount: number;
-    verifiedMilestonesCount: number;
-    clearanceRank: string;
-  };
-  state: {
-    completedTaskIds: string[];
-    // Forward-compatible record for future mini-tasks, custom timestamps, and sub-steps
-    taskDetails?: Record<string, {
-      completed: boolean;
-      completedAt?: string;
-      miniTasks?: Record<string, boolean>;
-      userNotes?: string;
-    }>;
-    completedMilestoneIds: string[];
-    artifacts: Record<string, {
-      repoUrl?: string;
-      liveUrl?: string;
-      notes?: string;
-      updatedAt: string;
-    }>;
-  };
-  metadata: {
-    customNotes?: string;
-    tags?: string[];
-    [key: string]: unknown; // Full open extensibility
-  };
-}
-
-export interface LegacyTelemetrySnapshot {
-  version?: string;
-  schemaVersion?: string;
-  exportedAt?: string;
-  clearanceRank?: string;
-  progressPercentage?: number;
-  completedTaskIds?: string[];
-  completedTasks?: string[];
-  completedMilestoneIds?: string[];
-  completedMilestones?: string[];
-  projectArtifacts?: Record<string, ProjectArtifact>;
-  state?: {
-    completedTaskIds?: string[];
-    completedMilestoneIds?: string[];
-    artifacts?: Record<string, ProjectArtifact>;
-    taskDetails?: Record<string, {
-      completed: boolean;
-      completedAt?: string;
-      miniTasks?: Record<string, boolean>;
-      userNotes?: string;
-    }>;
-  };
-}
-
-export type TelemetrySnapshot = FullRoadmapArchive | RoadmapFullSnapshot | LegacyTelemetrySnapshot;
-
 interface RoadmapContextType {
   isMounted: boolean;
   isCommander: boolean;
@@ -202,8 +84,8 @@ interface RoadmapContextType {
   toggleTask: (taskId: string, phaseId: string) => void;
   toggleMilestone: (milestoneId: string, phaseId: string) => void;
   resetProgress: () => void;
-  exportSnapshot: () => void;
-  importSnapshot: (snapshotInput: string | TelemetrySnapshot) => boolean;
+  exportRoadmapArchive: () => void;
+  ingestRoadmapArchive: (snapshotInput: string | Record<string, any>) => boolean;
 
   // Proof-of-Work Artifact Locker
   projectArtifacts: Record<string, ProjectArtifact>;
@@ -280,113 +162,6 @@ export const checkCommanderStatus = (): boolean => {
   } catch {}
   return false;
 };
-
-// Helper to normalize snapshot payloads across v3.0.0 FullRoadmapArchive, RoadmapFullSnapshot, and legacy telemetry
-export function extractTelemetryData(raw: unknown): {
-  taskIds: string[] | null;
-  milestoneIds: string[] | null;
-  artifacts: Record<string, ProjectArtifact>;
-  taskDetails: Record<string, unknown>;
-  customAvatarUrl?: string | null;
-} {
-  if (!raw || typeof raw !== "object") {
-    return { taskIds: null, milestoneIds: null, artifacts: {}, taskDetails: {} };
-  }
-  const data = raw as Record<string, unknown>;
-  let taskIds: string[] | null = null;
-  let milestoneIds: string[] | null = null;
-  let artifacts: Record<string, ProjectArtifact> = {};
-  let taskDetails: Record<string, unknown> = {};
-  let customAvatarUrl: string | null = null;
-
-  // 1. Check for schemaVersion "3.0.0" or FullRoadmapArchive with phases array
-  if (Array.isArray(data.phases)) {
-    const extractedTaskIds: string[] = [];
-    const extractedMilestoneIds: string[] = [];
-
-    data.phases.forEach((phase) => {
-      if (phase && typeof phase === "object") {
-        const p = phase as Record<string, unknown>;
-        if (Array.isArray(p.tasks)) {
-          p.tasks.forEach((t) => {
-            if (t && typeof t === "object") {
-              const taskObj = t as Record<string, unknown>;
-              const taskId = typeof taskObj.taskId === "string" ? taskObj.taskId : String(taskObj.id || "");
-              if (taskId) {
-                if (taskObj.isCompleted === true) {
-                  extractedTaskIds.push(taskId);
-                }
-                if (taskObj.userNotes || taskObj.miniTasks || taskObj.completedAt) {
-                  taskDetails[taskId] = {
-                    completed: !!taskObj.isCompleted,
-                    completedAt: taskObj.completedAt || undefined,
-                    userNotes: taskObj.userNotes || undefined,
-                    miniTasks: taskObj.miniTasks || undefined,
-                  };
-                }
-                if (taskObj.proofOfWork && typeof taskObj.proofOfWork === "object") {
-                  artifacts[taskId] = taskObj.proofOfWork as ProjectArtifact;
-                }
-              }
-            }
-          });
-        }
-
-        if (p.milestone && typeof p.milestone === "object") {
-          const m = p.milestone as Record<string, unknown>;
-          const msId = typeof m.milestoneId === "string" ? m.milestoneId : String(m.id || "");
-          if (msId && m.isVerified === true) {
-            extractedMilestoneIds.push(msId);
-          }
-        }
-      }
-    });
-
-    taskIds = extractedTaskIds;
-    milestoneIds = extractedMilestoneIds;
-
-    if (data.engineer && typeof data.engineer === "object") {
-      const eng = data.engineer as Record<string, unknown>;
-      if (typeof eng.avatarUrl === "string" && eng.avatarUrl.trim()) {
-        customAvatarUrl = eng.avatarUrl;
-      }
-    }
-  }
-
-  // 2. Check state object (state container or custom)
-  if (data.state && typeof data.state === "object") {
-    const stateObj = data.state as Record<string, unknown>;
-    if (Array.isArray(stateObj.completedTaskIds)) {
-      taskIds = taskIds ? Array.from(new Set([...taskIds, ...(stateObj.completedTaskIds as string[])])) : (stateObj.completedTaskIds as string[]);
-    }
-    if (Array.isArray(stateObj.completedMilestoneIds)) {
-      milestoneIds = milestoneIds ? Array.from(new Set([...milestoneIds, ...(stateObj.completedMilestoneIds as string[])])) : (stateObj.completedMilestoneIds as string[]);
-    }
-    if (stateObj.artifacts && typeof stateObj.artifacts === "object") {
-      artifacts = { ...artifacts, ...(stateObj.artifacts as Record<string, ProjectArtifact>) };
-    }
-    if (stateObj.taskDetails && typeof stateObj.taskDetails === "object") {
-      taskDetails = { ...taskDetails, ...(stateObj.taskDetails as Record<string, unknown>) };
-    }
-  }
-
-  // 3. Fallback for legacy v1.0 top-level arrays
-  if (!taskIds) {
-    if (Array.isArray(data.completedTaskIds)) taskIds = data.completedTaskIds as string[];
-    else if (Array.isArray(data.completedTasks)) taskIds = data.completedTasks as string[];
-  }
-
-  if (!milestoneIds) {
-    if (Array.isArray(data.completedMilestoneIds)) milestoneIds = data.completedMilestoneIds as string[];
-    else if (Array.isArray(data.completedMilestones)) milestoneIds = data.completedMilestones as string[];
-  }
-
-  if (data.projectArtifacts && typeof data.projectArtifacts === "object") {
-    artifacts = { ...artifacts, ...(data.projectArtifacts as Record<string, ProjectArtifact>) };
-  }
-
-  return { taskIds, milestoneIds, artifacts, taskDetails, customAvatarUrl };
-}
 
 const RoadmapContext = createContext<RoadmapContextType | undefined>(undefined);
 
@@ -787,19 +562,10 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return { title: "Cadet", level: 1, color: "text-slate-400", badge: "CR-01 // CADET" };
   }, [completionPercentage]);
 
-  // Export Snapshot JSON (v3.0.0 FullRoadmapArchive - Complete Curriculum Tree)
-  const exportSnapshot = useCallback(() => {
+  // Export Roadmap Archive (v3.0.0 FullRoadmapArchive)
+  const exportRoadmapArchive = useCallback(() => {
     soundFx.playBlip(980);
-    const taskDetails: Record<
-      string,
-      {
-        completed: boolean;
-        completedAt?: string;
-        miniTasks?: Record<string, boolean | { title: string; completed: boolean }>;
-        userNotes?: string;
-      }
-    > = {};
-
+    const taskDetails: Record<string, any> = {};
     try {
       const savedDetailsStr = localStorage.getItem(TASK_DETAILS_STORAGE_KEY);
       if (savedDetailsStr) {
@@ -807,156 +573,17 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     } catch {}
 
-    const nowIso = new Date().toISOString();
-
-    for (const taskId of completedTaskIds) {
-      if (!taskDetails[taskId]) {
-        taskDetails[taskId] = {
-          completed: true,
-          completedAt: nowIso,
-        };
-      } else {
-        taskDetails[taskId].completed = true;
-        if (!taskDetails[taskId].completedAt) {
-          taskDetails[taskId].completedAt = nowIso;
-        }
-      }
-    }
-
-    // Hydrate the complete roadmap curriculum tree
-    const hydratedPhases = ROADMAP_PHASES.map((phase, phaseIdx) => {
-      const phaseTasks = phase.modules.flatMap((m) => m.tasks);
-      const totalInPhase = phaseTasks.length;
-      let completedInPhase = 0;
-
-      const hydratedTasks = phaseTasks.map((task) => {
-        const isDone = completedTaskIds.has(task.id);
-        if (isDone) completedInPhase++;
-
-        const detail = taskDetails[task.id];
-        const taskArtifact = projectArtifacts[task.id];
-
-        // Format miniTasks
-        const miniTasksFormatted: Record<string, { title: string; completed: boolean }> = {};
-        if (detail?.miniTasks) {
-          Object.entries(detail.miniTasks).forEach(([key, val]) => {
-            if (typeof val === "boolean") {
-              miniTasksFormatted[key] = { title: key, completed: val };
-            } else if (val && typeof val === "object") {
-              miniTasksFormatted[key] = {
-                title: (val as { title?: string }).title || key,
-                completed: !!(val as { completed?: boolean }).completed,
-              };
-            }
-          });
-        }
-
-        return {
-          taskId: task.id,
-          taskNumber: task.id.replace(/^task-/, ""),
-          title: task.title,
-          description: task.description,
-          commands: task.commandSnippet ? [task.commandSnippet] : [],
-          category: task.tags?.[0] || phase.title,
-          isCompleted: isDone,
-          completedAt: isDone ? (detail?.completedAt || nowIso) : null,
-          userNotes: detail?.userNotes || "",
-          miniTasks: miniTasksFormatted,
-          proofOfWork: taskArtifact
-            ? {
-                repoUrl: taskArtifact.repoUrl,
-                liveUrl: taskArtifact.liveUrl,
-                notes: taskArtifact.notes,
-                updatedAt: taskArtifact.updatedAt,
-              }
-            : null,
-        };
-      });
-
-      const phaseProgress = totalInPhase > 0 ? Math.round((completedInPhase / totalInPhase) * 100) : 0;
-
-      const rawMilestone = phase.milestones?.[0];
-      let hydratedMilestone:
-        | {
-            milestoneId: string;
-            title: string;
-            deliverable: string;
-            isVerified: boolean;
-            verifiedAt: string | null;
-          }
-        | undefined = undefined;
-
-      if (rawMilestone) {
-        const isMsVerified = completedMilestoneIds.has(rawMilestone.id);
-        const msArtifact = projectArtifacts[rawMilestone.id];
-        hydratedMilestone = {
-          milestoneId: rawMilestone.id,
-          title: rawMilestone.title,
-          deliverable: rawMilestone.deliverables ? rawMilestone.deliverables.join("; ") : rawMilestone.description,
-          isVerified: isMsVerified,
-          verifiedAt: isMsVerified ? (msArtifact?.updatedAt || nowIso) : null,
-        };
-      }
-
-      const isPhaseFullyDefended =
-        totalInPhase > 0 &&
-        completedInPhase === totalInPhase &&
-        (!rawMilestone || completedMilestoneIds.has(rawMilestone.id));
-
-      const trackType: "sequential" | "parallel" =
-        phase.mode?.toLowerCase().includes("parallel") ? "parallel" : "sequential";
-
-      const phaseNum =
-        typeof phase.phaseNumber === "number"
-          ? phase.phaseNumber
-          : parseInt(String(phase.phaseNumber), 10) || phaseIdx + 1;
-
-      return {
-        phaseId: phase.id,
-        phaseNumber: phaseNum,
-        title: phase.title,
-        description: phase.description,
-        track: trackType,
-        isFullyDefended: isPhaseFullyDefended,
-        phaseProgress,
-        tasks: hydratedTasks,
-        ...(hydratedMilestone ? { milestone: hydratedMilestone } : {}),
-      };
+    const archive = generateCompleteArchive({
+      completedTaskIds,
+      completedMilestoneIds,
+      taskDetails,
+      artifacts: projectArtifacts,
+      userEmail: driveUser?.email,
+      isCommander,
+      avatarUrl: customAvatarUrl,
+      completionPercentage,
     });
-
-    const data: FullRoadmapArchive = {
-      schemaVersion: "3.0.0",
-      exportedAt: nowIso,
-      engine: "Ultimate DevOps Tracker Pro",
-      engineer: {
-        name: "Amr Fathy Elsherif",
-        email: driveUser?.email || "dev.amrelsherif@gmail.com",
-        role: isCommander ? "commander" : "observer",
-        clearanceRank: clearanceRank.title,
-        avatarUrl: customAvatarUrl,
-      },
-      summaryTelemetry: {
-        completionPercentage,
-        completedTasksCount,
-        totalTasksCount: totalTasks,
-        verifiedMilestonesCount: completedMilestonesCount,
-        totalMilestonesCount: totalMilestones,
-      },
-      phases: hydratedPhases,
-      metadata: {
-        generator: "DevOps Command Center Enterprise",
-        tags: ["devops", "cloud-architecture", "curriculum-archive", "systems-engineering"],
-      },
-    };
-
-    const jsonStr = JSON.stringify(data, null, 2);
-    const blob = new Blob([jsonStr], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `devops-complete-roadmap-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadArchiveFile(archive);
     addToast({
       type: "success",
       title: "SNAPSHOT EXPORTED",
@@ -966,21 +593,16 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     completedTaskIds,
     completedMilestoneIds,
     projectArtifacts,
-    clearanceRank.title,
-    completionPercentage,
-    completedTasksCount,
-    completedMilestonesCount,
-    totalTasks,
-    totalMilestones,
     driveUser?.email,
     isCommander,
     customAvatarUrl,
+    completionPercentage,
     addToast,
   ]);
 
-  // Ingest / Import Snapshot JSON
-  const importSnapshot = useCallback(
-    (snapshotInput: string | TelemetrySnapshot): boolean => {
+  // Ingest Roadmap Archive JSON
+  const ingestRoadmapArchive = useCallback(
+    (snapshotInput: string | Record<string, any>): boolean => {
       if (!isCommander) {
         soundFx.playAccessDenied();
         addToast({
@@ -1009,7 +631,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
           artifacts: artifactsMap,
           taskDetails: taskDetailsMap,
           customAvatarUrl: importedAvatar,
-        } = extractTelemetryData(raw);
+        } = parseRoadmapPayload(raw);
 
         if (!taskIds || !milestoneIds) {
           throw new Error("Missing completedTaskIds or completedMilestoneIds arrays.");
@@ -1060,7 +682,13 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return false;
       }
     },
-    [isCommander, addToast, saveProgress, triggerCelebration]
+    [
+      isCommander,
+      saveProgress,
+      triggerCelebration,
+      addToast,
+      setIsSnapshotModalOpen,
+    ]
   );
 
   // Google Drive Connection & Ingest
@@ -1116,7 +744,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (remoteSnapshot) {
         const { taskIds: remoteTasks, milestoneIds: remoteMilestones, artifacts: remoteArtifacts } =
-          extractTelemetryData(remoteSnapshot);
+          parseRoadmapPayload(remoteSnapshot);
 
         const safeRemoteTasks = remoteTasks || [];
         const safeRemoteMilestones = remoteMilestones || [];
@@ -1149,16 +777,17 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         });
       } else {
         // No remote file found: upload current local telemetry
-        const snapshot: TelemetrySnapshot = {
-          version: "1.0",
-          exportedAt: new Date().toISOString(),
-          clearanceRank: clearanceRank.title,
-          progressPercentage: completionPercentage,
-          completedTaskIds: Array.from(completedTaskIds),
-          completedMilestoneIds: Array.from(completedMilestoneIds),
-          projectArtifacts: projectArtifacts,
-        };
-        await pushToDrive(accessToken, snapshot);
+        const archive = generateCompleteArchive({
+          completedTaskIds,
+          completedMilestoneIds,
+          taskDetails: {},
+          artifacts: projectArtifacts,
+          userEmail: driveUser?.email,
+          isCommander,
+          avatarUrl: customAvatarUrl,
+          completionPercentage,
+        });
+        await pushToDrive(accessToken, archive);
         addToast({
           type: "success",
           title: "INITIAL TELEMETRY UPLOADED",
@@ -1187,6 +816,9 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     projectArtifacts,
     saveProgress,
     triggerCelebration,
+    driveUser?.email,
+    isCommander,
+    customAvatarUrl,
   ]);
 
   // Disconnect Drive
@@ -1232,7 +864,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (remote) {
         const { taskIds: remoteTasks, milestoneIds: remoteMilestones, artifacts: remoteArtifacts } =
-          extractTelemetryData(remote);
+          parseRoadmapPayload(remote);
 
         const safeRemoteTasks = remoteTasks || [];
         const safeRemoteMilestones = remoteMilestones || [];
@@ -1255,17 +887,18 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
       }
 
-      const snapshot: TelemetrySnapshot = {
-        version: "1.0",
-        exportedAt: new Date().toISOString(),
-        clearanceRank: clearanceRank.title,
-        progressPercentage: totalTasks > 0 ? Math.round((tasksToPush.size / totalTasks) * 100) : 0,
-        completedTaskIds: Array.from(tasksToPush),
-        completedMilestoneIds: Array.from(milestonesToPush),
-        projectArtifacts: artifactsToPush,
-      };
+      const archive = generateCompleteArchive({
+        completedTaskIds: tasksToPush,
+        completedMilestoneIds: milestonesToPush,
+        taskDetails: {},
+        artifacts: artifactsToPush,
+        userEmail: driveUser?.email,
+        isCommander,
+        avatarUrl: customAvatarUrl,
+        completionPercentage: totalTasks > 0 ? Math.round((tasksToPush.size / totalTasks) * 100) : 0,
+      });
 
-      await pushToDrive(token, snapshot);
+      await pushToDrive(token, archive);
 
       setDriveSyncStatus("synced");
       setDriveLastSyncedAt(new Date().toLocaleTimeString());
@@ -1284,32 +917,34 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         errMsg.toLowerCase().includes("invalid_grant")
       ) {
         disconnectDriveSession();
-        soundFx.playErrorBuzz();
+        soundFx.playAccessDenied();
         addToast({
           type: "denied",
           title: "SESSION EXPIRED",
-          description: "Google Drive session token expired or revoked. Please reconnect.",
+          description: "Google Drive authentication token expired or revoked. Please sign in again.",
         });
       } else {
-        setDriveSyncStatus("synced");
+        setDriveSyncStatus("error");
         soundFx.playErrorBuzz();
         addToast({
           type: "denied",
-          title: "SYNC ERROR",
-          description: err instanceof Error ? err.message : "Failed to sync with Google Drive.",
+          title: "SYNC FAILED",
+          description: errMsg || "Failed to synchronize telemetry with Google Drive.",
         });
       }
     }
   }, [
-    completedTaskIds,
     completedMilestoneIds,
-    projectArtifacts,
-    clearanceRank.title,
-    totalTasks,
-    saveProgress,
-    addToast,
+    completedTaskIds,
     connectDrive,
     disconnectDriveSession,
+    projectArtifacts,
+    saveProgress,
+    totalTasks,
+    addToast,
+    driveUser?.email,
+    isCommander,
+    customAvatarUrl,
   ]);
 
   return (
@@ -1334,8 +969,8 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         toggleTask,
         toggleMilestone,
         resetProgress,
-        exportSnapshot,
-        importSnapshot,
+        exportRoadmapArchive,
+        ingestRoadmapArchive,
         projectArtifacts,
         setProjectArtifact,
         driveSyncStatus,
