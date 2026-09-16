@@ -130,66 +130,24 @@ export const ClearanceBadgeModal: React.FC = () => {
     ctx.fillStyle = "rgba(0, 0, 0, 0.12)";
     for (let y = 0; y < HEIGHT; y += 4) ctx.fillRect(0, y, WIDTH, 1.5);
 
-    // 4. Borders
-    ctx.save();
-    ctx.strokeStyle = "#00f0ff";
-    ctx.lineWidth = 2;
-    ctx.shadowColor = "rgba(0, 240, 255, 0.6)";
-    ctx.shadowBlur = 15;
-    ctx.strokeRect(20, 20, WIDTH - 40, HEIGHT - 40);
-    ctx.restore();
-    ctx.strokeStyle = "rgba(0, 255, 157, 0.3)";
+    // 4. Sleek Minimalist Outer Border (24px outer margin, #0891b2 with 25% opacity)
+    ctx.strokeStyle = "rgba(8, 145, 178, 0.25)";
     ctx.lineWidth = 1;
-    ctx.strokeRect(26, 26, WIDTH - 52, HEIGHT - 52);
+    ctx.strokeRect(24, 24, WIDTH - 48, HEIGHT - 48);
 
-    const drawCorner = (x: number, y: number, angle: number) => {
-      ctx.save();
-      ctx.translate(x, y); ctx.rotate(angle);
-      ctx.strokeStyle = "#00ff9d"; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(0, 24); ctx.lineTo(0, 0); ctx.lineTo(24, 0); ctx.stroke();
-      ctx.fillStyle = "#00f0ff"; ctx.fillRect(-2, -2, 4, 4);
-      ctx.restore();
-    };
-    drawCorner(20, 20, 0);
-    drawCorner(WIDTH - 20, 20, Math.PI / 2);
-    drawCorner(WIDTH - 20, HEIGHT - 20, Math.PI);
-    drawCorner(20, HEIGHT - 20, (Math.PI * 3) / 2);
-
-    // 5. Header Ribbon
-    ctx.fillStyle = "rgba(10, 20, 40, 0.88)";
-    ctx.fillRect(40, 40, WIDTH - 80, 54);
-    ctx.strokeStyle = "rgba(0, 240, 255, 0.3)";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(40, 40, WIDTH - 80, 54);
-
-    ctx.font = "bold 13px 'Courier New', monospace";
-    ctx.fillStyle = "#00f0ff";
-    ctx.fillText("CLASSIFIED TELEMETRY DOSSIER // SECURITY CLEARANCE RECORD", 55, 61);
-    ctx.font = "11px 'Courier New', monospace";
-    ctx.fillStyle = "rgba(148, 163, 184, 0.8)";
-    ctx.fillText("PROTOCOL: ZERO-TO-HERO CLOUD INFRASTRUCTURE SPECIFICATION v2.4", 55, 82);
-
-    ctx.fillStyle = "rgba(0, 255, 157, 0.15)";
-    ctx.strokeStyle = "#00ff9d";
-    ctx.lineWidth = 1;
-    drawRoundRect(ctx, WIDTH - 220, 47, 160, 28, 4);
-    ctx.fill(); ctx.stroke();
-    ctx.font = "bold 11px 'Courier New', monospace";
-    ctx.fillStyle = "#00ff9d";
-    ctx.fillText("● ID VERIFIED", WIDTH - 196, 65);
-
-    // 6. Circular Avatar
-    const avatarCX = 130;
-    const avatarCY = 190;
-    const avatarR = 72;
+    // 5. Header & Identity Zone (Y: 45 to 195 - Height: 150px)
+    // 5A. Circular Avatar (diameter: 110px, Y: 55 to 165, radius: 55px)
+    const avatarCX = 110;
+    const avatarCY = 110;
+    const avatarR = 55;
 
     ctx.save();
     ctx.beginPath();
-    ctx.arc(avatarCX, avatarCY, avatarR + 6, 0, Math.PI * 2);
+    ctx.arc(avatarCX, avatarCY, avatarR + 5, 0, Math.PI * 2);
     ctx.strokeStyle = "rgba(0, 240, 255, 0.25)";
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2;
     ctx.shadowColor = "rgba(0, 240, 255, 0.4)";
-    ctx.shadowBlur = 12;
+    ctx.shadowBlur = 10;
     ctx.stroke();
     ctx.restore();
 
@@ -234,62 +192,60 @@ export const ClearanceBadgeModal: React.FC = () => {
       } catch {
         ctx.fillStyle = "rgba(10, 16, 36, 1)";
         ctx.fillRect(avatarCX - avatarR, avatarCY - avatarR, avatarR * 2, avatarR * 2);
-        ctx.font = "bold 40px 'Courier New', monospace";
+        ctx.font = "bold 32px 'Courier New', monospace";
         ctx.fillStyle = "#ffffff";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText("AFE", avatarCX, avatarCY + 2);
+        ctx.fillText("AFE", avatarCX, avatarCY + 1);
         ctx.textAlign = "left";
         ctx.textBaseline = "alphabetic";
       }
     } else {
       ctx.fillStyle = "rgba(10, 16, 36, 1)";
       ctx.fillRect(avatarCX - avatarR, avatarCY - avatarR, avatarR * 2, avatarR * 2);
-      ctx.font = "bold 40px 'Courier New', monospace";
+      ctx.font = "bold 32px 'Courier New', monospace";
       ctx.fillStyle = "#ffffff";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("AFE", avatarCX, avatarCY + 2);
+      ctx.fillText("AFE", avatarCX, avatarCY + 1);
       ctx.textAlign = "left";
       ctx.textBaseline = "alphabetic";
     }
     ctx.restore();
 
-    // 7. Identity Block
-    const idX = 230;
+    // 5B. Identity Block (Name, Title, Tier Badge)
+    const idX = 195;
 
-    ctx.font = "bold 38px 'Courier New', monospace";
+    ctx.font = "bold 28px 'Courier New', monospace";
     ctx.fillStyle = "#f8fafc";
-    ctx.fillText(ENGINEER_NAME, idX, 162);
+    ctx.fillText(ENGINEER_NAME, idX, 90);
 
-    ctx.font = "bold 16px 'Courier New', monospace";
-    ctx.fillStyle = "#38bdf8";
-    ctx.fillText("DevOps & Cloud Systems Architect", idX, 192);
+    ctx.font = "14px 'Courier New', monospace";
+    ctx.fillStyle = "#94a3b8";
+    ctx.fillText("DevOps & Cloud Systems Architect", idX, 116);
 
     const tierLabel = getTierLabel(clearanceRank.level);
-    ctx.fillStyle = "rgba(0, 240, 255, 0.12)";
-    ctx.strokeStyle = "rgba(0, 240, 255, 0.6)";
-    ctx.lineWidth = 1.5;
-    drawRoundRect(ctx, idX, 208, 330, 30, 6);
+    ctx.fillStyle = "rgba(0, 240, 255, 0.10)";
+    ctx.strokeStyle = "rgba(0, 240, 255, 0.4)";
+    ctx.lineWidth = 1;
+    drawRoundRect(ctx, idX, 134, 280, 26, 4);
     ctx.fill();
     ctx.stroke();
-    ctx.font = "bold 12px 'Courier New', monospace";
+    ctx.font = "bold 11px 'Courier New', monospace";
     ctx.fillStyle = "#00f0ff";
-    ctx.fillText(tierLabel, idX + 14, 227);
+    ctx.fillText(tierLabel, idX + 12, 151);
 
-    // 7.5. Top-Right QR Code Card (Balancing the Avatar)
-    const qrFrameX = 1030;
-    const qrFrameY = 95;
-    const qrFrameW = 130;
-    const qrFrameH = 155;
+    // 5C. Top-Right QR Code Card (X: 1055, Y: 55, Size: 100x100, 45px right margin)
+    const qrX = 1055;
+    const qrY = 55;
 
     ctx.save();
     ctx.fillStyle = "rgba(10, 16, 32, 0.85)";
     ctx.strokeStyle = "#0891b2";
-    ctx.lineWidth = 1.5;
-    ctx.shadowColor = "rgba(8, 145, 178, 0.4)";
-    ctx.shadowBlur = 10;
-    drawRoundRect(ctx, qrFrameX, qrFrameY, qrFrameW, qrFrameH, 8);
+    ctx.lineWidth = 1;
+    ctx.shadowColor = "rgba(8, 145, 178, 0.35)";
+    ctx.shadowBlur = 8;
+    drawRoundRect(ctx, qrX - 5, qrY - 5, 110, 110, 6);
     ctx.fill();
     ctx.stroke();
     ctx.restore();
@@ -302,7 +258,7 @@ export const ClearanceBadgeModal: React.FC = () => {
 
       const qrDataUrl = await QRCode.toDataURL(liveOrigin, {
         margin: 1,
-        width: 110,
+        width: 100,
         color: { dark: "#00f0ff", light: "#050814" },
       });
 
@@ -312,26 +268,21 @@ export const ClearanceBadgeModal: React.FC = () => {
         qrImg.onload = () => resolve();
       });
 
-      const qrX = 1040;
-      const qrY = 105;
-      ctx.drawImage(qrImg, qrX, qrY, 110, 110);
+      ctx.drawImage(qrImg, qrX, qrY, 100, 100);
 
-      // Inner subtle border around QR image
-      ctx.strokeStyle = "rgba(8, 145, 178, 0.5)";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(qrX - 1, qrY - 1, 112, 112);
-
-      // Monospace label underneath centered under QR
+      // Monospace label centered underneath QR
       ctx.font = "bold 9px 'Courier New', monospace";
       ctx.fillStyle = "#22d3ee";
       ctx.textAlign = "center";
-      ctx.fillText("SCAN TO VERIFY LIVE", qrX + 55, qrY + 128);
+      ctx.fillText("SCAN TO VERIFY LIVE", qrX + 50, qrY + 122);
       ctx.textAlign = "left";
     } catch {
       // Fallback if QR fails
     }
 
-    // 8. Three Symmetrical Metric Pillars
+    // [Vertical Air Gap 1: Y: 195 to 230 - 35px empty space]
+
+    // 6. Core Metrics Zone (Y: 230 to 410 - Height: 180px)
     const pillars = [
       {
         label: "PROGRESS",
@@ -356,11 +307,11 @@ export const ClearanceBadgeModal: React.FC = () => {
       },
     ];
 
-    const pillarStartX = 40;
-    const pillarStartY = 295;
-    const pillarW = 360;
-    const pillarH = 115;
-    const pillarGap = 20;
+    const pillarStartX = 55;
+    const pillarStartY = 230;
+    const pillarW = 345;
+    const pillarH = 180;
+    const pillarGap = 35;
 
     for (let idx = 0; idx < pillars.length; idx++) {
       const p = pillars[idx];
@@ -377,82 +328,93 @@ export const ClearanceBadgeModal: React.FC = () => {
       ctx.strokeStyle = p.color;
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(cx + 8, cy);
-      ctx.lineTo(cx + 80, cy);
+      ctx.moveTo(cx + 10, cy);
+      ctx.lineTo(cx + 85, cy);
       ctx.stroke();
 
+      // Label with generous top padding
       ctx.font = "bold 11px 'Courier New', monospace";
-      ctx.fillStyle = "rgba(148, 163, 184, 1)";
-      ctx.fillText(p.label, cx + 14, cy + 24);
+      ctx.fillStyle = "rgba(148, 163, 184, 0.9)";
+      ctx.fillText(p.label, cx + 18, cy + 38);
 
+      // Value with generous vertical breathing room
       ctx.save();
-      ctx.font = "bold 34px 'Courier New', monospace";
+      ctx.font = "bold 40px 'Courier New', monospace";
       ctx.fillStyle = p.color;
       ctx.shadowColor = p.glow;
       ctx.shadowBlur = 10;
-      ctx.fillText(p.value, cx + 14, cy + 68);
+      ctx.fillText(p.value, cx + 18, cy + 96);
       ctx.restore();
 
-      ctx.font = "bold 11px 'Courier New', monospace";
+      // Subtitle with generous bottom padding
+      ctx.font = "bold 12px 'Courier New', monospace";
       ctx.fillStyle = "rgba(226, 232, 240, 0.95)";
-      ctx.fillText(p.sub, cx + 14, cy + 92);
+      ctx.fillText(p.sub, cx + 18, cy + 144);
     }
 
-    // 9. Bottom Panel (Balanced 4-Column Cryptographic Metadata Strip)
-    const bottomY = 440;
-    const bottomH = 145;
+    // [Vertical Air Gap 2: Y: 410 to 445 - 35px empty space]
 
-    ctx.fillStyle = "rgba(8, 13, 27, 0.85)";
-    ctx.strokeStyle = "rgba(0, 240, 255, 0.22)";
+    // 7. Footer Metadata Zone (Y: 445 to 575 - Height: 130px, Streamlined & Centered)
+    const bottomY = 445;
+    const bottomH = 130;
+
+    ctx.fillStyle = "rgba(8, 13, 27, 0.6)";
+    ctx.strokeStyle = "rgba(30, 41, 59, 0.8)";
     ctx.lineWidth = 1;
-    drawRoundRect(ctx, 40, bottomY, WIDTH - 80, bottomH, 8);
+    drawRoundRect(ctx, 45, bottomY, WIDTH - 90, bottomH, 8);
     ctx.fill();
     ctx.stroke();
 
-    // Subtle vertical divider lines between columns
+    // Subtle top divider line
     ctx.strokeStyle = "#1e293b";
     ctx.lineWidth = 1;
-    [320, 600, 890].forEach((divX) => {
+    ctx.beginPath();
+    ctx.moveTo(55, bottomY);
+    ctx.lineTo(WIDTH - 55, bottomY);
+    ctx.stroke();
+
+    // Subtle vertical divider lines between columns
+    [325, 615, 895].forEach((divX) => {
       ctx.beginPath();
-      ctx.moveTo(divX, bottomY + 28);
-      ctx.lineTo(divX, bottomY + bottomH - 28);
+      ctx.moveTo(divX, bottomY + 25);
+      ctx.lineTo(divX, bottomY + bottomH - 25);
       ctx.stroke();
     });
 
     const now = new Date();
     const issuedDateStr = `${now.toISOString().slice(0, 10)} UTC`;
 
-    // Column 1: Credential ID
+    // Column 1: Credential ID (X: 70)
     ctx.font = "10px 'Courier New', monospace";
     ctx.fillStyle = "#64748b";
-    ctx.fillText("CREDENTIAL ID", 70, bottomY + 58);
+    ctx.fillText("CREDENTIAL ID", 70, bottomY + 48);
     ctx.font = "bold 13px 'Courier New', monospace";
     ctx.fillStyle = "#f8fafc";
-    ctx.fillText("DEV-AFE-2026", 70, bottomY + 90);
+    ctx.fillText("DEV-AFE-2026", 70, bottomY + 80);
 
-    // Column 2: Issued Date
+    // Column 2: Issued Date (X: 350)
     ctx.font = "10px 'Courier New', monospace";
     ctx.fillStyle = "#64748b";
-    ctx.fillText("ISSUED DATE", 350, bottomY + 58);
-    ctx.font = "12px 'Courier New', monospace";
+    ctx.fillText("ISSUED DATE", 350, bottomY + 48);
+    ctx.font = "bold 13px 'Courier New', monospace";
     ctx.fillStyle = "#cbd5e1";
-    ctx.fillText(issuedDateStr, 350, bottomY + 90);
+    ctx.fillText(issuedDateStr, 350, bottomY + 80);
 
-    // Column 3: Security Signature
+    // Column 3: Security Signature (X: 635)
     ctx.font = "10px 'Courier New', monospace";
     ctx.fillStyle = "#64748b";
-    ctx.fillText("SECURITY SIGNATURE", 630, bottomY + 58);
-    ctx.font = "12px 'Courier New', monospace";
+    ctx.fillText("SECURITY SIGNATURE", 635, bottomY + 48);
+    ctx.font = "bold 13px 'Courier New', monospace";
     ctx.fillStyle = "#38bdf8";
-    ctx.fillText("SHA256: 7F4B-5253-C0DE", 630, bottomY + 90);
+    ctx.fillText("SHA256: 7F4B-5253-C0DE", 635, bottomY + 80);
 
-    // Column 4: Verification Status
+    // Column 4: Verification Status (X: 915)
     ctx.font = "10px 'Courier New', monospace";
     ctx.fillStyle = "#64748b";
-    ctx.fillText("VERIFICATION STATUS", 920, bottomY + 58);
-    ctx.font = "bold 12px 'Courier New', monospace";
+    ctx.fillText("VERIFICATION STATUS", 915, bottomY + 48);
+    ctx.font = "bold 13px 'Courier New', monospace";
     ctx.fillStyle = "#34d399";
-    ctx.fillText("● CRYPTOGRAPHICALLY VERIFIED", 920, bottomY + 90);
+    ctx.fillText("● CRYPTOGRAPHICALLY VERIFIED", 915, bottomY + 80);
 
     setIsGenerating(false);
   }, [
