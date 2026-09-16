@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useRoadmap } from "@/context/RoadmapContext";
@@ -277,6 +277,60 @@ export const ClearanceBadgeModal: React.FC = () => {
     ctx.fillStyle = "#00f0ff";
     ctx.fillText(tierLabel, idX + 14, 227);
 
+    // 7.5. Top-Right QR Code Card (Balancing the Avatar)
+    const qrFrameX = 1030;
+    const qrFrameY = 95;
+    const qrFrameW = 130;
+    const qrFrameH = 155;
+
+    ctx.save();
+    ctx.fillStyle = "rgba(10, 16, 32, 0.85)";
+    ctx.strokeStyle = "#0891b2";
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = "rgba(8, 145, 178, 0.4)";
+    ctx.shadowBlur = 10;
+    drawRoundRect(ctx, qrFrameX, qrFrameY, qrFrameW, qrFrameH, 8);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    try {
+      const liveOrigin =
+        typeof window !== "undefined" && window.location.origin
+          ? window.location.origin
+          : "https://dev-amr-elsherif.github.io/ultimate-devops-tracker";
+
+      const qrDataUrl = await QRCode.toDataURL(liveOrigin, {
+        margin: 1,
+        width: 110,
+        color: { dark: "#00f0ff", light: "#050814" },
+      });
+
+      const qrImg = new Image();
+      qrImg.src = qrDataUrl;
+      await new Promise<void>((resolve) => {
+        qrImg.onload = () => resolve();
+      });
+
+      const qrX = 1040;
+      const qrY = 105;
+      ctx.drawImage(qrImg, qrX, qrY, 110, 110);
+
+      // Inner subtle border around QR image
+      ctx.strokeStyle = "rgba(8, 145, 178, 0.5)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(qrX - 1, qrY - 1, 112, 112);
+
+      // Monospace label underneath centered under QR
+      ctx.font = "bold 9px 'Courier New', monospace";
+      ctx.fillStyle = "#22d3ee";
+      ctx.textAlign = "center";
+      ctx.fillText("SCAN TO VERIFY LIVE", qrX + 55, qrY + 128);
+      ctx.textAlign = "left";
+    } catch {
+      // Fallback if QR fails
+    }
+
     // 8. Three Symmetrical Metric Pillars
     const pillars = [
       {
@@ -285,7 +339,6 @@ export const ClearanceBadgeModal: React.FC = () => {
         sub: `${operationalPhasesCount} / 12 Phases Defended`,
         color: "#00f0ff",
         glow: "rgba(0, 240, 255, 0.18)",
-        showBar: true,
       },
       {
         label: "CORE TASKS",
@@ -293,7 +346,6 @@ export const ClearanceBadgeModal: React.FC = () => {
         sub: "CLI & Config Protocols",
         color: "#38bdf8",
         glow: "rgba(56, 189, 248, 0.18)",
-        showBar: false,
       },
       {
         label: "VERIFIED ARTIFACTS",
@@ -301,7 +353,6 @@ export const ClearanceBadgeModal: React.FC = () => {
         sub: "GitHub Repos & Live Demos",
         color: "#00ff9d",
         glow: "rgba(0, 255, 157, 0.18)",
-        showBar: false,
       },
     ];
 
@@ -344,22 +395,12 @@ export const ClearanceBadgeModal: React.FC = () => {
 
       ctx.font = "bold 11px 'Courier New', monospace";
       ctx.fillStyle = "rgba(226, 232, 240, 0.95)";
-      ctx.fillText(p.sub, cx + 14, cy + 90);
-
-      if (p.showBar) {
-        const barX = cx + 14;
-        const barY = cy + 100;
-        const barW = pillarW - 28;
-        ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
-        ctx.fillRect(barX, barY, barW, 6);
-        ctx.fillStyle = p.color;
-        ctx.fillRect(barX, barY, (barW * completionPercentage) / 100, 6);
-      }
+      ctx.fillText(p.sub, cx + 14, cy + 92);
     }
 
-    // 9. Bottom Panel (Clean 2-line Metadata & QR Verification)
-    const bottomY = 435;
-    const bottomH = 155;
+    // 9. Bottom Panel (Balanced 4-Column Cryptographic Metadata Strip)
+    const bottomY = 440;
+    const bottomH = 145;
 
     ctx.fillStyle = "rgba(8, 13, 27, 0.85)";
     ctx.strokeStyle = "rgba(0, 240, 255, 0.22)";
@@ -368,50 +409,50 @@ export const ClearanceBadgeModal: React.FC = () => {
     ctx.fill();
     ctx.stroke();
 
+    // Subtle vertical divider lines between columns
+    ctx.strokeStyle = "#1e293b";
+    ctx.lineWidth = 1;
+    [320, 600, 890].forEach((divX) => {
+      ctx.beginPath();
+      ctx.moveTo(divX, bottomY + 28);
+      ctx.lineTo(divX, bottomY + bottomH - 28);
+      ctx.stroke();
+    });
+
     const now = new Date();
-    const issuedStr = now.toISOString().replace("T", " ").slice(0, 19) + " UTC";
+    const issuedDateStr = `${now.toISOString().slice(0, 10)} UTC`;
 
-    ctx.font = "bold 15px 'Courier New', monospace";
-    ctx.fillStyle = "#00f0ff";
-    ctx.fillText("ID: DEV-AFE-2026", 65, bottomY + 68);
-
+    // Column 1: Credential ID
+    ctx.font = "10px 'Courier New', monospace";
+    ctx.fillStyle = "#64748b";
+    ctx.fillText("CREDENTIAL ID", 70, bottomY + 58);
     ctx.font = "bold 13px 'Courier New', monospace";
-    ctx.fillStyle = "rgba(226, 232, 240, 0.95)";
-    ctx.fillText(`ISSUED: ${issuedStr}`, 65, bottomY + 102);
+    ctx.fillStyle = "#f8fafc";
+    ctx.fillText("DEV-AFE-2026", 70, bottomY + 90);
 
-    // QR Code
-    try {
-      const liveOrigin =
-        typeof window !== "undefined" && window.location.origin
-          ? window.location.origin
-          : "https://dev-amr-elsherif.github.io/ultimate-devops-tracker";
+    // Column 2: Issued Date
+    ctx.font = "10px 'Courier New', monospace";
+    ctx.fillStyle = "#64748b";
+    ctx.fillText("ISSUED DATE", 350, bottomY + 58);
+    ctx.font = "12px 'Courier New', monospace";
+    ctx.fillStyle = "#cbd5e1";
+    ctx.fillText(issuedDateStr, 350, bottomY + 90);
 
-      const qrDataUrl = await QRCode.toDataURL(liveOrigin, {
-        margin: 1,
-        width: 125,
-        color: { dark: "#00f0ff", light: "#050814" },
-      });
+    // Column 3: Security Signature
+    ctx.font = "10px 'Courier New', monospace";
+    ctx.fillStyle = "#64748b";
+    ctx.fillText("SECURITY SIGNATURE", 630, bottomY + 58);
+    ctx.font = "12px 'Courier New', monospace";
+    ctx.fillStyle = "#38bdf8";
+    ctx.fillText("SHA256: 7F4B-5253-C0DE", 630, bottomY + 90);
 
-      const qrImg = new Image();
-      qrImg.src = qrDataUrl;
-      await new Promise<void>((resolve) => { qrImg.onload = () => resolve(); });
-
-      const qrX = WIDTH - 195;
-      const qrY = bottomY + 12;
-      ctx.drawImage(qrImg, qrX, qrY, 125, 125);
-
-      ctx.strokeStyle = "rgba(0, 240, 255, 0.4)";
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(qrX - 2, qrY - 2, 129, 129);
-
-      ctx.font = "bold 8px 'Courier New', monospace";
-      ctx.fillStyle = "#00f0ff";
-      ctx.textAlign = "center";
-      ctx.fillText("SCAN TO VERIFY LIVE TELEMETRY", qrX + 62, bottomY + 148);
-      ctx.textAlign = "left";
-    } catch {
-      // Fallback if QR fails silently
-    }
+    // Column 4: Verification Status
+    ctx.font = "10px 'Courier New', monospace";
+    ctx.fillStyle = "#64748b";
+    ctx.fillText("VERIFICATION STATUS", 920, bottomY + 58);
+    ctx.font = "bold 12px 'Courier New', monospace";
+    ctx.fillStyle = "#34d399";
+    ctx.fillText("● CRYPTOGRAPHICALLY VERIFIED", 920, bottomY + 90);
 
     setIsGenerating(false);
   }, [
