@@ -180,9 +180,13 @@ export const PhaseCard: React.FC<PhaseCardProps> = ({ phase }) => {
               className="rounded-xl border border-slate-800 bg-slate-900/50 overflow-hidden transition-all"
             >
               {/* Module Header */}
-              <div
+              <button
+                type="button"
                 onClick={() => toggleModule(mod.id)}
-                className="flex items-center justify-between p-3.5 cursor-pointer bg-slate-900/80 hover:bg-slate-800/80 select-none transition-colors"
+                aria-expanded={isOpen}
+                aria-controls={`module-tasks-${mod.id}`}
+                aria-label={`Toggle Module ${mod.code}: ${mod.title}`}
+                className="w-full flex items-center justify-between p-3.5 cursor-pointer bg-slate-900/80 hover:bg-slate-800/80 select-none transition-colors text-left focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
               >
                 <div className="flex items-center gap-2.5">
                   <FolderTree className="w-4 h-4 text-cyan-400 shrink-0" />
@@ -208,14 +212,14 @@ export const PhaseCard: React.FC<PhaseCardProps> = ({ phase }) => {
                   {isOpen ? (
                     <ChevronUp className="w-4 h-4 text-cyan-400" />
                   ) : (
-                    <ChevronDown className="w-4 h-4 text-slate-500" />
+                    <ChevronDown className="w-4 h-4 text-slate-400" />
                   )}
                 </div>
-              </div>
+              </button>
 
               {/* Module Tasks List */}
               {isOpen && (
-                <div className="p-3.5 space-y-2.5 bg-slate-950/40 border-t border-slate-800/80">
+                <div id={`module-tasks-${mod.id}`} className="p-3.5 space-y-2.5 bg-slate-950/40 border-t border-slate-800/80">
                   {mod.tasks.map((task) => (
                     <TaskItem key={task.id} task={task} phaseId={phase.id} />
                   ))}

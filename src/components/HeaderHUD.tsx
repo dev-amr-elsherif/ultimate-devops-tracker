@@ -15,6 +15,7 @@ import {
   Cloud,
   CloudOff,
   RefreshCw,
+  CreditCard,
 } from "lucide-react";
 import { soundFx } from "@/lib/audio";
 
@@ -23,6 +24,7 @@ export const HeaderHUD: React.FC = () => {
     isMounted,
     isCommander,
     setIsPasscodeModalOpen,
+    setIsBadgeModalOpen,
     revokeCommander,
     completionPercentage,
     completedTasksCount,
@@ -82,7 +84,13 @@ export const HeaderHUD: React.FC = () => {
                   : "text-slate-500"
               }
             >
-              {safeDriveStatus.toUpperCase()}
+              {safeDriveStatus === "synced"
+                ? "CONNECTED"
+                : safeDriveStatus === "syncing"
+                ? "SYNCING"
+                : safeDriveStatus === "connecting"
+                ? "AUTHENTICATING"
+                : "DISCONNECTED"}
             </strong>
           </span>
           <span className="text-slate-600">|</span>
@@ -95,75 +103,71 @@ export const HeaderHUD: React.FC = () => {
         </div>
       </div>
 
-      {/* Main HUD Banner */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
-        {/* Brand & Mission Title */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-cyan-950/60 border border-cyan-400/40 flex items-center justify-center text-cyan-300 shadow-[0_0_15px_rgba(0,240,255,0.2)]">
-            <Terminal className="w-5 h-5" />
+      {/* Main Command Center Header Bar */}
+      <div className="flex items-center justify-between px-3 sm:px-4 lg:px-6 py-2.5 sm:py-3">
+        {/* Left: Branding & Core Mode */}
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="p-1.5 sm:p-2 rounded-xl bg-gradient-to-br from-cyan-500/20 via-blue-500/10 to-transparent border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.25)] shrink-0">
+            <Terminal className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400 animate-pulse" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base sm:text-lg font-bold font-mono tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400">
-                ULTIMATE DEVOPS TRACKER
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <h1 className="text-xs sm:text-base lg:text-lg font-mono font-bold tracking-tight text-white flex items-center gap-1.5">
+                <span className="hidden xs:inline sm:inline">DEVOPS ARCHITECT</span>
+                <span className="sm:hidden xs:hidden">DEVOPS</span>
+                <span className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full font-mono bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 font-normal shrink-0">
+                  v2.4
+                </span>
               </h1>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-300">
-                PRO-SPEC
-              </span>
             </div>
-            <p className="text-xs text-slate-400 font-mono hidden sm:block">
-              Zero-to-Hero Cloud Architecture & Systems Mastery
+            <p className="text-[11px] font-mono text-slate-400 hidden sm:block truncate">
+              Continuous Zero-to-Hero Cloud Infrastructure Roadmap
             </p>
           </div>
         </div>
 
-        {/* Telemetry HUD Blocks */}
-        <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto py-1">
-          {/* Overall Progress */}
+        {/* Center: Real-time Telemetry Stats (Desktop) */}
+        <div className="hidden md:flex items-center gap-4">
+          {/* Overall Completion Progress */}
           <div
             suppressHydrationWarning
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/80 border border-cyan-500/20 shadow-inner"
+            className="flex items-center gap-3 px-3 py-1.5 rounded-lg bg-slate-900/80 border border-cyan-500/20"
           >
             <Activity className="w-4 h-4 text-cyan-400 shrink-0" />
-            <div className="flex flex-col">
-              <span className="text-[10px] font-mono uppercase text-slate-400">Progress</span>
-              <span suppressHydrationWarning className="text-xs font-mono font-bold text-cyan-300">
-                {safePercentage}%
-              </span>
-            </div>
-            {/* Mini Progress Bar */}
-            <div className="w-12 h-1.5 bg-slate-800 rounded-full overflow-hidden ml-1">
-              <div
-                className="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 transition-all duration-500"
-                style={{ width: `${safePercentage}%` }}
-              />
+            <div className="flex flex-col min-w-[120px]">
+              <div className="flex justify-between text-[10px] font-mono uppercase text-slate-400">
+                <span>Progress</span>
+                <span suppressHydrationWarning className="text-cyan-300 font-bold">{safePercentage}%</span>
+              </div>
+              <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden mt-1 border border-slate-700/50">
+                <div
+                  className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-500 shadow-[0_0_8px_rgba(6,182,212,0.5)]"
+                  style={{ width: `${safePercentage}%` }}
+                />
+              </div>
             </div>
           </div>
 
-          {/* Operational Phases */}
+          {/* Operational Phases Count */}
           <div
             suppressHydrationWarning
-            className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/80 border border-emerald-500/20"
           >
             <CheckSquare className="w-4 h-4 text-emerald-400 shrink-0" />
             <div className="flex flex-col">
-              <span className="text-[10px] font-mono uppercase text-slate-400">Phases Complete</span>
+              <span className="text-[10px] font-mono uppercase text-slate-400">Phases Online</span>
               <span suppressHydrationWarning className="text-xs font-mono font-bold text-emerald-300">
                 {safePhasesCount} <span className="text-slate-500 font-normal">/ 12</span>
               </span>
             </div>
           </div>
 
-          {/* Tasks Done */}
+          {/* Granular Tasks Count */}
           <div
             suppressHydrationWarning
-            className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/80 border border-cyan-500/20"
           >
-            <div
-              className={`w-2 h-2 rounded-full ${
-                safeIsCommander ? "bg-emerald-400" : "bg-cyan-400"
-              } animate-pulse`}
-            />
+            <Terminal className="w-4 h-4 text-cyan-400 shrink-0" />
             <div className="flex flex-col">
               <span className="text-[10px] font-mono uppercase text-slate-400">
                 {safeIsCommander ? "Tasks Completed" : "Tasks Locked"}
@@ -189,65 +193,99 @@ export const HeaderHUD: React.FC = () => {
           </div>
         </div>
 
-        {/* Action Controls: Audio + Drive Sync + Commander Mode Switcher */}
-        <div className="flex items-center gap-2.5">
+        {/* Action Controls: Badge + Drive Sync + Audio + Commander Mode Switcher */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          {/* Holographic Clearance ID Generator Button */}
+          <button
+            data-testid="clearance-badge-btn"
+            aria-label="Generate Holographic Clearance ID Badge"
+            onClick={() => {
+              soundFx.playBlip(900);
+              setIsBadgeModalOpen(true);
+            }}
+            className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-lg bg-cyan-950/40 border border-cyan-500/40 hover:border-cyan-400 text-cyan-300 hover:text-cyan-200 transition-all font-mono text-xs font-bold shadow-[0_0_10px_rgba(0,240,255,0.15)] focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none group"
+            title="Generate Holographic Clearance ID Badge for LinkedIn & Portfolio"
+          >
+            <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-400 group-hover:scale-110 transition-transform shrink-0" />
+            <span className="hidden sm:inline font-semibold tracking-wider">[ 🪪 ID CLEARANCE ]</span>
+            <span className="sm:hidden font-mono">[ 🪪 ID ]</span>
+          </button>
+
           {/* Google Drive Cloud Sync Widget */}
           {safeDriveStatus === "disconnected" && (
             <button
               data-testid="drive-connect-btn"
+              aria-label="Connect Google Drive for cloud telemetry sync"
               onClick={connectDrive}
-              className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-slate-900/90 border border-slate-700 hover:border-cyan-500/50 text-slate-400 hover:text-cyan-300 transition-all font-mono text-xs shadow-sm group"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-lg bg-slate-900/90 border border-slate-700 hover:border-cyan-500/50 text-slate-400 hover:text-cyan-300 transition-all font-mono text-xs shadow-sm focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none group"
               title="Connect Google Drive to enable cloud telemetry sync (appDataFolder)"
             >
-              <Cloud className="w-4 h-4 text-slate-500 group-hover:text-cyan-400 transition-colors" />
-              <span className="hidden xl:inline font-semibold tracking-wider">[ ☁️ CONNECT DRIVE ]</span>
-              <span className="xl:hidden font-semibold tracking-wider">DRIVE</span>
+              <Cloud className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 group-hover:text-cyan-400 transition-colors" />
+              <span className="hidden sm:inline font-semibold tracking-wider">[ ☁️ CONNECT DRIVE ]</span>
             </button>
           )}
 
-          {(safeDriveStatus === "connecting" || safeDriveStatus === "syncing") && (
+          {safeDriveStatus === "connecting" && (
             <div
               data-testid="drive-syncing-indicator"
-              className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-cyan-950/40 border border-cyan-500/40 text-cyan-300 font-mono text-xs animate-pulse"
-              title="Synchronizing telemetry with Google Drive..."
+              aria-label="Connecting to Google Drive"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-lg bg-cyan-950/40 border border-cyan-500/40 text-cyan-300 font-mono text-xs animate-pulse"
+              title="Connecting to Google Drive..."
             >
               <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400" />
-              <span className="hidden xl:inline font-semibold tracking-wider">
-                {safeDriveStatus === "connecting" ? "[ ☁️ AUTHENTICATING... ]" : "[ ☁️ SYNCING... ]"}
-              </span>
-              <span className="xl:hidden font-semibold tracking-wider">SYNCING</span>
+              <span className="hidden sm:inline font-semibold tracking-wider">[ ☁️ AUTHENTICATING... ]</span>
             </div>
           )}
 
-          {safeDriveStatus === "synced" && (
+          {(safeDriveStatus === "synced" || safeDriveStatus === "syncing") && (
             <div
               data-testid="drive-synced-widget"
-              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-900/90 border border-emerald-500/40 font-mono text-xs shadow-[0_0_12px_rgba(16,185,129,0.15)]"
+              className="flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-lg bg-slate-900/90 border border-emerald-500/40 font-mono text-xs shadow-[0_0_12px_rgba(16,185,129,0.15)]"
             >
               {driveUser?.picture ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={driveUser.picture}
                   alt={driveUser.name || "User"}
-                  className="w-5 h-5 rounded-full border border-emerald-400/60 mr-0.5"
+                  className="w-4 h-4 sm:w-5 sm:h-5 rounded-full border border-emerald-400/60 mr-0.5"
                 />
               ) : (
-                <Cloud className="w-4 h-4 text-emerald-400 mr-0.5" />
+                <Cloud className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 mr-0.5" />
               )}
               <button
                 data-testid="drive-sync-manual-btn"
+                aria-label="Synchronize telemetry with Google Drive"
                 onClick={syncDriveManual}
-                className="flex items-center gap-1.5 px-1 py-1 text-emerald-300 hover:text-cyan-200 transition-colors group"
-                title={`Drive Synced${driveUser?.email ? ` (${driveUser.email})` : ""}${driveLastSyncedAt ? ` at ${driveLastSyncedAt}` : ""}. Click to force sync.`}
+                disabled={safeDriveStatus === "syncing"}
+                className={`flex items-center gap-1 sm:gap-1.5 px-1 py-1 transition-colors group focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none ${
+                  safeDriveStatus === "syncing"
+                    ? "text-cyan-300 cursor-wait"
+                    : "text-emerald-300 hover:text-cyan-200"
+                }`}
+                title={
+                  safeDriveStatus === "syncing"
+                    ? "Synchronizing telemetry with Google Drive..."
+                    : `Drive Connected${driveUser?.email ? ` (${driveUser.email})` : ""}${
+                        driveLastSyncedAt ? ` • Last backup: ${driveLastSyncedAt}` : ""
+                      }. Click to backup telemetry.`
+                }
               >
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="hidden xl:inline font-semibold tracking-wider">[ ☁️ DRIVE SYNCED ]</span>
-                <span className="xl:hidden font-semibold tracking-wider">SYNCED</span>
+                {safeDriveStatus === "syncing" ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+                    <span className="hidden sm:inline font-semibold tracking-wider">[ ☁️ SYNCING... ]</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    <span className="hidden sm:inline font-semibold tracking-wider">[ ☁️ DRIVE CONNECTED ]</span>
+                  </>
+                )}
               </button>
               <button
                 data-testid="drive-disconnect-btn"
                 onClick={disconnectDriveSession}
-                className="p-1 rounded text-slate-500 hover:text-rose-400 hover:bg-slate-800 transition-colors ml-0.5"
+                className="p-1 rounded text-slate-500 hover:text-rose-400 hover:bg-slate-800 transition-colors ml-0.5 focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:outline-none"
                 title="Disconnect Google Drive"
                 aria-label="Disconnect Google Drive"
               >
@@ -262,7 +300,7 @@ export const HeaderHUD: React.FC = () => {
               toggleAudioMute();
               soundFx.playBlip(700);
             }}
-            className={`p-2 rounded-lg border transition-all ${
+            className={`p-1.5 sm:p-2 rounded-lg border transition-all focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none ${
               isAudioMuted
                 ? "bg-slate-900/80 border-slate-700 text-slate-500 hover:text-slate-300"
                 : "bg-cyan-950/40 border-cyan-500/40 text-cyan-300 hover:border-cyan-400 shadow-[0_0_10px_rgba(0,240,255,0.2)]"
@@ -270,7 +308,7 @@ export const HeaderHUD: React.FC = () => {
             title={isAudioMuted ? "Audio Synthesizer Muted (Click to Unmute)" : "Audio Synthesizer Active (Click to Mute)"}
             aria-label="Toggle Sound"
           >
-            {isAudioMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            {isAudioMuted ? <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
           </button>
 
           {/* Commander Mode Toggle Button */}
@@ -278,10 +316,10 @@ export const HeaderHUD: React.FC = () => {
             <button
               data-testid="mode-toggle-btn"
               onClick={revokeCommander}
-              className="group flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-950/40 border border-emerald-400/60 text-emerald-300 hover:bg-emerald-900/50 hover:border-emerald-300 transition-all font-mono text-xs font-bold shadow-[0_0_15px_rgba(0,255,157,0.25)]"
+              className="group flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-emerald-950/40 border border-emerald-400/60 text-emerald-300 hover:bg-emerald-900/50 hover:border-emerald-300 transition-all font-mono text-xs font-bold shadow-[0_0_15px_rgba(0,255,157,0.25)] focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
               title="Click to switch back to Observer Mode"
             >
-              <Unlock className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+              <Unlock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 group-hover:scale-110 transition-transform shrink-0" />
               <span className="hidden sm:inline">COMMANDER MODE</span>
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-200">
                 ACTIVE
@@ -294,10 +332,10 @@ export const HeaderHUD: React.FC = () => {
                 soundFx.playBlip(900);
                 setIsPasscodeModalOpen(true);
               }}
-              className="group flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900/90 border border-cyan-500/30 text-cyan-400 hover:bg-cyan-950/40 hover:border-cyan-400 hover:text-cyan-200 transition-all font-mono text-xs font-bold shadow-[0_0_12px_rgba(0,240,255,0.15)]"
+              className="group flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-slate-900/90 border border-cyan-500/30 text-cyan-400 hover:bg-cyan-950/40 hover:border-cyan-400 hover:text-cyan-200 transition-all font-mono text-xs font-bold shadow-[0_0_12px_rgba(0,240,255,0.15)] focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
               title="Click or press Ctrl+Shift+A to authenticate as Commander"
             >
-              <Lock className="w-4 h-4 text-cyan-400 group-hover:text-cyan-200 group-hover:scale-110 transition-transform" />
+              <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-400 group-hover:text-cyan-200 group-hover:scale-110 transition-transform shrink-0" />
               <span className="hidden sm:inline">OBSERVER MODE</span>
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-400">
                 UNLOCK

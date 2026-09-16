@@ -11,7 +11,7 @@ An enterprise-grade, sci-fi command terminal web application and interactive cur
 - **Synthesized Web Audio Engine**: Browser-native Web Audio API oscillator synthesis generating sci-fi UI clicks, access denial alarms, holographic activation chimes, and milestone celebration fanfares without external audio files.
 - **Dual Security Model**:
   - **Observer Mode (Default)**: Public read-only portfolio tracker. Task checkboxes are locked; clicking triggers an "Access Denied: Commander Mode authentication required" alert.
-  - **Commander Mode (Authenticated)**: Unlocked via holographic lock button or `Ctrl + Shift + A`. Master PIN: `admin123`. Unlocks task editing, state persistence in `localStorage`, JSON snapshot export, and milestone defense triggers.
+  - **Commander Mode (Authenticated)**: Unlocked via holographic lock button or `Ctrl + Shift + A`. Master PIN: `010135`. Unlocks task editing, state persistence in `localStorage`, JSON snapshot export, and milestone defense triggers.
 - **Telemetry HUD**: Real-time progress percentage, operational phases count (100% complete), task counts, remaining milestones, and dynamic Clearance Rank badges (`Cadet` ➔ `SysAdmin` ➔ `Cloud Architect` ➔ `DevOps Lead`).
 - **Interactive Execution Topology**: Visual SVG flowchart and raw ASCII topology mapping sequential phases, parallel morning/evening tracks, convergence gates, and the final capstone trial.
 - **Complete 12-Phase Curriculum**: Fully typed schema with real-world production bash commands, Dockerfiles, Terraform HCL, Kubernetes YAML, and acceptance criteria.
@@ -77,7 +77,7 @@ npm run start
 
 ## 🔐 Commander Mode Authentication
 
-- Default Passcode: `admin123`
+- Default Passcode: `010135`
 - Hotkey: Press `Ctrl + Shift + A` anywhere on the page to summon the Commander Authentication dialog.
 - Alternatively, click the **OBSERVER MODE (UNLOCK)** button in the top HUD.
 

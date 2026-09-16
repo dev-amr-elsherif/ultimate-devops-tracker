@@ -82,7 +82,7 @@ export const PeripheralRadar: React.FC = () => {
 
                 {/* Recommended Tools */}
                 <div className="flex flex-wrap items-center gap-1.5 mb-3">
-                  <span className="text-[10px] font-mono text-slate-500 mr-1">STACK:</span>
+                  <span className="text-[10px] font-mono text-slate-400 mr-1 font-semibold">STACK:</span>
                   {item.recommendedTools.map((tool) => (
                     <span
                       key={tool}

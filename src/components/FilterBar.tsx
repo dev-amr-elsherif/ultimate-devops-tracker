@@ -58,10 +58,11 @@ export const FilterBar: React.FC = () => {
         </div>
 
         {/* Filter categories buttons */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Roadmap filter options">
           <button
             onClick={() => handleFilterClick("all")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all ${
+            aria-pressed={activeFilter === "all"}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none ${
               activeFilter === "all"
                 ? "bg-cyan-500/20 border border-cyan-400 text-cyan-300 shadow-[0_0_10px_rgba(0,240,255,0.2)] font-bold"
                 : "bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700"
@@ -73,7 +74,8 @@ export const FilterBar: React.FC = () => {
 
           <button
             onClick={() => handleFilterClick("sequential")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all ${
+            aria-pressed={activeFilter === "sequential"}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none ${
               activeFilter === "sequential"
                 ? "bg-cyan-500/20 border border-cyan-400 text-cyan-300 shadow-[0_0_10px_rgba(0,240,255,0.2)] font-bold"
                 : "bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700"
@@ -85,7 +87,8 @@ export const FilterBar: React.FC = () => {
 
           <button
             onClick={() => handleFilterClick("parallel")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all ${
+            aria-pressed={activeFilter === "parallel"}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:outline-none ${
               activeFilter === "parallel"
                 ? "bg-violet-500/20 border border-violet-400 text-violet-300 shadow-[0_0_10px_rgba(139,92,246,0.2)] font-bold"
                 : "bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700"
@@ -97,7 +100,8 @@ export const FilterBar: React.FC = () => {
 
           <button
             onClick={() => handleFilterClick("milestones")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all ${
+            aria-pressed={activeFilter === "milestones"}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none ${
               activeFilter === "milestones"
                 ? "bg-amber-500/20 border border-amber-400 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.2)] font-bold"
                 : "bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700"
@@ -113,7 +117,8 @@ export const FilterBar: React.FC = () => {
           <button
             data-testid="export-snapshot-btn"
             onClick={exportSnapshot}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-cyan-300 font-mono text-xs transition-all"
+            aria-label="Export and download JSON snapshot of current progress"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-cyan-300 font-mono text-xs transition-all focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
             title="Download JSON Snapshot of current progress"
           >
             <Download className="w-3.5 h-3.5" />
@@ -126,7 +131,8 @@ export const FilterBar: React.FC = () => {
               soundFx.playBlip(750);
               setIsSnapshotModalOpen(true);
             }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-cyan-300 font-mono text-xs transition-all"
+            aria-label="Ingest or import JSON telemetry snapshot"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-cyan-300 font-mono text-xs transition-all focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
             title="Ingest / Import JSON Telemetry Snapshot"
           >
             <Upload className="w-3.5 h-3.5" />
@@ -136,7 +142,8 @@ export const FilterBar: React.FC = () => {
           <button
             data-testid="reset-progress-btn"
             onClick={handleResetClick}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900/80 hover:bg-rose-950/40 border border-slate-800 hover:border-rose-500/40 text-slate-400 hover:text-rose-300 font-mono text-xs transition-all"
+            aria-label="Purge progress metrics (Requires Commander Mode)"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900/80 hover:bg-rose-950/40 border border-slate-800 hover:border-rose-500/40 text-slate-400 hover:text-rose-300 font-mono text-xs transition-all focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:outline-none"
             title="Purge progress metrics (Requires Commander Mode)"
           >
             <RotateCcw className="w-3.5 h-3.5" />

@@ -40,10 +40,18 @@ export interface ToastMessage {
 
 export type FilterCategory = "all" | "sequential" | "parallel" | "milestones";
 
+export interface ProjectArtifact {
+  repoUrl?: string;
+  liveUrl?: string;
+  notes?: string;
+  updatedAt: string;
+}
+
 export interface RoadmapProgressState {
   completedTaskIds: string[];
   completedMilestoneIds: string[];
   notes: Record<string, string>;
+  projectArtifacts?: Record<string, ProjectArtifact>;
   lastUpdated: string;
 }
 
@@ -54,6 +62,7 @@ export interface TelemetrySnapshot {
   progressPercentage: number;
   completedTaskIds: string[];
   completedMilestoneIds: string[];
+  projectArtifacts?: Record<string, ProjectArtifact>;
 }
 
 interface RoadmapContextType {
@@ -63,6 +72,8 @@ interface RoadmapContextType {
   setIsPasscodeModalOpen: (open: boolean) => void;
   isSnapshotModalOpen: boolean;
   setIsSnapshotModalOpen: (open: boolean) => void;
+  isBadgeModalOpen: boolean;
+  setIsBadgeModalOpen: (open: boolean) => void;
   authenticateCommander: (passcode: string) => boolean;
   revokeCommander: () => void;
 
@@ -73,6 +84,10 @@ interface RoadmapContextType {
   resetProgress: () => void;
   exportSnapshot: () => void;
   importSnapshot: (snapshotInput: string | TelemetrySnapshot) => boolean;
+
+  // Proof-of-Work Artifact Locker
+  projectArtifacts: Record<string, ProjectArtifact>;
+  setProjectArtifact: (milestoneId: string, artifact: Partial<ProjectArtifact>) => void;
 
   // Google Drive Cloud Sync
   driveSyncStatus: DriveSyncStatus;
@@ -113,8 +128,10 @@ interface RoadmapContextType {
 }
 
 const STORAGE_KEY = "devops_roadmap_progress";
+const ALT_STORAGE_KEY = "devops_roadmap_state";
+const ARTIFACTS_STORAGE_KEY = "devops_roadmap_artifacts";
 const AUTH_KEY = "devops_commander_session";
-const MASTER_PASSCODE = "admin123";
+export const MASTER_PIN = process.env.NEXT_PUBLIC_COMMANDER_PIN || "010135";
 
 const RoadmapContext = createContext<RoadmapContextType | undefined>(undefined);
 
@@ -134,7 +151,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [completedTaskIds, setCompletedTaskIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(ALT_STORAGE_KEY);
       if (saved) {
         const parsed: RoadmapProgressState = JSON.parse(saved);
         if (Array.isArray(parsed.completedTaskIds)) {
@@ -148,7 +165,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [completedMilestoneIds, setCompletedMilestoneIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(ALT_STORAGE_KEY);
       if (saved) {
         const parsed: RoadmapProgressState = JSON.parse(saved);
         if (Array.isArray(parsed.completedMilestoneIds)) {
@@ -159,8 +176,23 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return new Set();
   });
 
+  const [projectArtifacts, setProjectArtifacts] = useState<Record<string, ProjectArtifact>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const saved = localStorage.getItem(ARTIFACTS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object") {
+          return parsed;
+        }
+      }
+    } catch {}
+    return {};
+  });
+
   const [isPasscodeModalOpen, setIsPasscodeModalOpen] = useState<boolean>(false);
   const [isSnapshotModalOpen, setIsSnapshotModalOpen] = useState<boolean>(false);
+  const [isBadgeModalOpen, setIsBadgeModalOpen] = useState<boolean>(false);
   const [activeFilter, setActiveFilter] = useState<FilterCategory>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isAudioMuted, setIsAudioMuted] = useState<boolean>(() => soundFx.isMuted());
@@ -171,8 +203,6 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [driveUser, setDriveUser] = useState<DriveUser | null>(null);
   const [driveLastSyncedAt, setDriveLastSyncedAt] = useState<string | null>(null);
   const driveAccessTokenRef = useRef<string | null>(null);
-  const autoPushTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const isInitialMount = useRef<boolean>(true);
 
   // Restore Drive session from sessionStorage after initial mount
   useEffect(() => {
@@ -218,6 +248,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         lastUpdated: new Date().toISOString(),
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      localStorage.setItem(ALT_STORAGE_KEY, JSON.stringify(payload));
     } catch {
       // Ignore write errors
     }
@@ -251,7 +282,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Authenticate Commander
   const authenticateCommander = useCallback((passcode: string): boolean => {
-    if (passcode.trim() === MASTER_PASSCODE) {
+    if (passcode.trim() === MASTER_PIN) {
       setIsCommander(true);
       try {
         sessionStorage.setItem(AUTH_KEY, "authenticated");
@@ -370,6 +401,51 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [isCommander, addToast, completedTaskIds, saveProgress, triggerCelebration]
   );
 
+  // Proof-of-Work Artifact Locker
+  const setProjectArtifact = useCallback(
+    (milestoneId: string, artifact: Partial<ProjectArtifact>) => {
+      if (!isCommander) {
+        soundFx.playAccessDenied();
+        addToast({
+          type: "denied",
+          title: "ACCESS DENIED",
+          description: "Commander Mode authentication required to attach or edit milestone artifacts.",
+        });
+        return;
+      }
+
+      setProjectArtifacts((prev) => {
+        const existing = prev[milestoneId] || {};
+        const updated: ProjectArtifact = {
+          ...existing,
+          ...artifact,
+          updatedAt: new Date().toISOString(),
+        };
+
+        const next = {
+          ...prev,
+          [milestoneId]: updated,
+        };
+
+        try {
+          localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(next));
+        } catch {
+          // Ignore storage write error
+        }
+
+        soundFx.playSuccess();
+        addToast({
+          type: "success",
+          title: "ARTIFACT SECURED: Project evidence linked",
+          description: "Proof-of-work artifact recorded for this milestone.",
+        });
+
+        return next;
+      });
+    },
+    [isCommander, addToast]
+  );
+
   // Reset Progress
   const resetProgress = useCallback(() => {
     if (!isCommander) {
@@ -378,8 +454,11 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
     setCompletedTaskIds(new Set());
     setCompletedMilestoneIds(new Set());
+    setProjectArtifacts({});
     try {
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(ALT_STORAGE_KEY);
+      localStorage.removeItem(ARTIFACTS_STORAGE_KEY);
     } catch {}
     soundFx.playBlip(300);
     addToast({
@@ -432,6 +511,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
       progressPercentage: completionPercentage,
       completedTaskIds: Array.from(completedTaskIds),
       completedMilestoneIds: Array.from(completedMilestoneIds),
+      projectArtifacts: projectArtifacts,
     };
     const jsonStr = JSON.stringify(data, null, 2);
     const blob = new Blob([jsonStr], { type: "application/json" });
@@ -446,7 +526,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
       title: "SNAPSHOT EXPORTED",
       description: "Roadmap telemetry JSON successfully downloaded.",
     });
-  }, [completedTaskIds, completedMilestoneIds, clearanceRank.title, completionPercentage, addToast]);
+  }, [completedTaskIds, completedMilestoneIds, projectArtifacts, clearanceRank.title, completionPercentage, addToast]);
 
   // Ingest / Import Snapshot JSON
   const importSnapshot = useCallback(
@@ -484,6 +564,13 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setCompletedTaskIds(nextTasks);
         setCompletedMilestoneIds(nextMilestones);
         saveProgress(nextTasks, nextMilestones);
+
+        if (data.projectArtifacts && typeof data.projectArtifacts === "object") {
+          setProjectArtifacts(data.projectArtifacts);
+          try {
+            localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(data.projectArtifacts));
+          } catch {}
+        }
 
         triggerCelebration();
         addToast({
@@ -548,6 +635,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (remoteSnapshot) {
         const remoteTasks = remoteSnapshot.completedTaskIds || [];
         const remoteMilestones = remoteSnapshot.completedMilestoneIds || [];
+        const remoteArtifacts = remoteSnapshot.projectArtifacts || {};
 
         setCompletedTaskIds((prevTasks) => {
           const mergedTasks = new Set([...Array.from(prevTasks), ...remoteTasks]);
@@ -558,6 +646,16 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
           });
           return mergedTasks;
         });
+
+        if (remoteArtifacts && Object.keys(remoteArtifacts).length > 0) {
+          setProjectArtifacts((prevArtifacts) => {
+            const mergedArtifacts = { ...prevArtifacts, ...remoteArtifacts };
+            try {
+              localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(mergedArtifacts));
+            } catch {}
+            return mergedArtifacts;
+          });
+        }
 
         triggerCelebration();
         addToast({
@@ -574,6 +672,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
           progressPercentage: completionPercentage,
           completedTaskIds: Array.from(completedTaskIds),
           completedMilestoneIds: Array.from(completedMilestoneIds),
+          projectArtifacts: projectArtifacts,
         };
         await pushToDrive(accessToken, snapshot);
         addToast({
@@ -601,6 +700,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     completionPercentage,
     completedTaskIds,
     completedMilestoneIds,
+    projectArtifacts,
     saveProgress,
     triggerCelebration,
   ]);
@@ -633,6 +733,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const remote = await pullFromDrive(token);
       let tasksToPush = completedTaskIds;
       let milestonesToPush = completedMilestoneIds;
+      let artifactsToPush = projectArtifacts;
 
       if (remote) {
         tasksToPush = new Set([...Array.from(completedTaskIds), ...(remote.completedTaskIds || [])]);
@@ -643,6 +744,14 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setCompletedTaskIds(tasksToPush);
         setCompletedMilestoneIds(milestonesToPush);
         saveProgress(tasksToPush, milestonesToPush);
+
+        if (remote.projectArtifacts) {
+          artifactsToPush = { ...projectArtifacts, ...remote.projectArtifacts };
+          setProjectArtifacts(artifactsToPush);
+          try {
+            localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(artifactsToPush));
+          } catch {}
+        }
       }
 
       const snapshot: TelemetrySnapshot = {
@@ -652,28 +761,37 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         progressPercentage: totalTasks > 0 ? Math.round((tasksToPush.size / totalTasks) * 100) : 0,
         completedTaskIds: Array.from(tasksToPush),
         completedMilestoneIds: Array.from(milestonesToPush),
+        projectArtifacts: artifactsToPush,
       };
 
       await pushToDrive(token, snapshot);
 
       setDriveSyncStatus("synced");
       setDriveLastSyncedAt(new Date().toLocaleTimeString());
-      soundFx.playCommanderUnlock();
+      soundFx.playBlip(880);
       addToast({
         type: "success",
-        title: "MANUAL SYNC COMPLETE",
+        title: "TELEMETRY BACKUP SYNCED TO DRIVE",
         description: "Google Drive appDataFolder updated with latest telemetry.",
       });
     } catch (err) {
-      if (err instanceof Error && err.message === "UNAUTHORIZED") {
+      const errMsg = err instanceof Error ? err.message : "";
+      if (
+        errMsg === "UNAUTHORIZED" ||
+        errMsg.includes("401") ||
+        errMsg.toLowerCase().includes("revoked") ||
+        errMsg.toLowerCase().includes("invalid_grant")
+      ) {
         disconnectDriveSession();
+        soundFx.playErrorBuzz();
         addToast({
           type: "denied",
           title: "SESSION EXPIRED",
-          description: "Google Drive session token expired. Please reconnect.",
+          description: "Google Drive session token expired or revoked. Please reconnect.",
         });
       } else {
         setDriveSyncStatus("synced");
+        soundFx.playErrorBuzz();
         addToast({
           type: "denied",
           title: "SYNC ERROR",
@@ -684,67 +802,12 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [
     completedTaskIds,
     completedMilestoneIds,
+    projectArtifacts,
     clearanceRank.title,
     totalTasks,
     saveProgress,
     addToast,
     connectDrive,
-    disconnectDriveSession,
-  ]);
-
-  // Debounced background auto-push whenever tasks or milestones change in Commander Mode
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-
-    if (!isCommander || driveSyncStatus !== "synced" || !driveAccessTokenRef.current) {
-      return;
-    }
-
-    if (autoPushTimerRef.current) {
-      clearTimeout(autoPushTimerRef.current);
-    }
-
-    autoPushTimerRef.current = setTimeout(async () => {
-      const token = driveAccessTokenRef.current;
-      if (!token) return;
-
-      try {
-        setDriveSyncStatus("syncing");
-        const snapshot: TelemetrySnapshot = {
-          version: "1.0",
-          exportedAt: new Date().toISOString(),
-          clearanceRank: clearanceRank.title,
-          progressPercentage: completionPercentage,
-          completedTaskIds: Array.from(completedTaskIds),
-          completedMilestoneIds: Array.from(completedMilestoneIds),
-        };
-        await pushToDrive(token, snapshot);
-        setDriveSyncStatus("synced");
-        setDriveLastSyncedAt(new Date().toLocaleTimeString());
-      } catch (err) {
-        if (err instanceof Error && err.message === "UNAUTHORIZED") {
-          disconnectDriveSession();
-        } else {
-          setDriveSyncStatus("synced");
-        }
-      }
-    }, 1500);
-
-    return () => {
-      if (autoPushTimerRef.current) {
-        clearTimeout(autoPushTimerRef.current);
-      }
-    };
-  }, [
-    completedTaskIds,
-    completedMilestoneIds,
-    isCommander,
-    driveSyncStatus,
-    clearanceRank.title,
-    completionPercentage,
     disconnectDriveSession,
   ]);
 
@@ -757,6 +820,8 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setIsPasscodeModalOpen,
         isSnapshotModalOpen,
         setIsSnapshotModalOpen,
+        isBadgeModalOpen,
+        setIsBadgeModalOpen,
         authenticateCommander,
         revokeCommander,
         completedTaskIds,
@@ -766,6 +831,8 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         resetProgress,
         exportSnapshot,
         importSnapshot,
+        projectArtifacts,
+        setProjectArtifact,
         driveSyncStatus,
         driveUser,
         driveLastSyncedAt,

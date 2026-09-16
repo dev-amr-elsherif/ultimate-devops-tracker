@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useRoadmap } from "@/context/RoadmapContext";
+import { useRoadmap, MASTER_PIN } from "@/context/RoadmapContext";
 import { ShieldCheck, ShieldAlert, KeyRound, X, Eye, EyeOff } from "lucide-react";
 import { soundFx } from "@/lib/audio";
 
@@ -103,7 +103,7 @@ const PasscodeModalDialog: React.FC<DialogProps> = ({ onClose, onAuthenticate })
           <div className="mt-2.5 p-2 rounded bg-cyan-950/30 border border-cyan-500/30 text-[11px] font-mono text-cyan-300 flex items-center justify-between">
             <span>DEFAULT MASTER PIN:</span>
             <span className="font-bold text-cyan-100 bg-cyan-900/50 px-2 py-0.5 rounded tracking-widest border border-cyan-500/40">
-              admin123
+              {MASTER_PIN}
             </span>
           </div>
         </div>
@@ -144,13 +144,14 @@ const PasscodeModalDialog: React.FC<DialogProps> = ({ onClose, onAuthenticate })
           )}
 
           {/* Sci-Fi Numeric Quickpad */}
-          <div className="grid grid-cols-3 gap-2 pt-2">
+          <div className="grid grid-cols-3 gap-2 pt-2" role="group" aria-label="Numeric PIN entry pad">
             {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num) => (
               <button
                 key={num}
                 type="button"
                 onClick={() => handleKeyPress(num)}
-                className="py-2.5 rounded bg-slate-900/60 hover:bg-cyan-950/40 border border-slate-800 hover:border-cyan-500/40 font-mono text-sm font-bold text-slate-200 hover:text-cyan-300 transition-all active:scale-95"
+                aria-label={`Digit ${num}`}
+                className="py-2.5 rounded bg-slate-900/60 hover:bg-cyan-950/40 border border-slate-800 hover:border-cyan-500/40 font-mono text-sm font-bold text-slate-200 hover:text-cyan-300 transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
               >
                 {num}
               </button>
@@ -158,14 +159,16 @@ const PasscodeModalDialog: React.FC<DialogProps> = ({ onClose, onAuthenticate })
             <button
               type="button"
               onClick={handleBackspace}
-              className="py-2.5 rounded bg-slate-900/60 hover:bg-rose-950/40 border border-slate-800 hover:border-rose-500/40 font-mono text-xs font-semibold text-rose-300 transition-all active:scale-95"
+              aria-label="Delete last digit"
+              className="py-2.5 rounded bg-slate-900/60 hover:bg-rose-950/40 border border-slate-800 hover:border-rose-500/40 font-mono text-xs font-semibold text-rose-300 transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:outline-none"
             >
               DEL
             </button>
             <button
               type="button"
               onClick={() => handleKeyPress("0")}
-              className="py-2.5 rounded bg-slate-900/60 hover:bg-cyan-950/40 border border-slate-800 hover:border-cyan-500/40 font-mono text-sm font-bold text-slate-200 hover:text-cyan-300 transition-all active:scale-95"
+              aria-label="Digit 0"
+              className="py-2.5 rounded bg-slate-900/60 hover:bg-cyan-950/40 border border-slate-800 hover:border-cyan-500/40 font-mono text-sm font-bold text-slate-200 hover:text-cyan-300 transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
             >
               0
             </button>
@@ -175,7 +178,8 @@ const PasscodeModalDialog: React.FC<DialogProps> = ({ onClose, onAuthenticate })
                 soundFx.playBlip(350);
                 setPasscode("");
               }}
-              className="py-2.5 rounded bg-slate-900/60 hover:bg-slate-800 border border-slate-800 font-mono text-xs text-slate-400 hover:text-slate-200 transition-all active:scale-95"
+              aria-label="Clear PIN entry"
+              className="py-2.5 rounded bg-slate-900/60 hover:bg-slate-800 border border-slate-800 font-mono text-xs text-slate-400 hover:text-slate-200 transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
             >
               CLR
             </button>
@@ -185,13 +189,13 @@ const PasscodeModalDialog: React.FC<DialogProps> = ({ onClose, onAuthenticate })
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-lg border border-slate-700 bg-slate-900/80 hover:bg-slate-800 font-mono text-xs text-slate-300 transition-colors"
+              className="flex-1 py-2.5 rounded-lg border border-slate-700 bg-slate-900/80 hover:bg-slate-800 font-mono text-xs text-slate-300 transition-colors focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
             >
               CANCEL
             </button>
             <button
               type="submit"
-              className="flex-1 py-2.5 rounded-lg border border-cyan-400 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 font-mono text-xs font-bold tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(0,240,255,0.2)]"
+              className="flex-1 py-2.5 rounded-lg border border-cyan-400 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 font-mono text-xs font-bold tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(0,240,255,0.2)] focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
             >
               <ShieldCheck className="w-4 h-4" />
               AUTHENTICATE

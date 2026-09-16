@@ -103,7 +103,12 @@ export const ExecutionGraph: React.FC = () => {
         </div>
 
         {viewMode === "ascii" ? (
-          <div className="overflow-x-auto bg-slate-950 p-3 rounded-lg border border-slate-800 font-mono text-[11px] text-cyan-400/90 leading-tight">
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label="ASCII Execution Topology"
+            className="overflow-x-auto bg-slate-950 p-3 rounded-lg border border-slate-800 font-mono text-[11px] text-cyan-400/90 leading-tight focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-400"
+          >
             <pre>{asciiGraph}</pre>
           </div>
         ) : (

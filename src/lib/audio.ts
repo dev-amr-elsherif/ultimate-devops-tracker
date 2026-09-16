@@ -3,12 +3,23 @@
 class SoundEffects {
   private ctx: AudioContext | null = null;
   private muted: boolean = false;
+  private idleTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("devops_audio_muted");
       this.muted = saved === "true";
     }
+  }
+
+  private scheduleIdleSuspend() {
+    if (typeof window === "undefined") return;
+    if (this.idleTimer) clearTimeout(this.idleTimer);
+    this.idleTimer = setTimeout(() => {
+      if (this.ctx && this.ctx.state === "running") {
+        this.ctx.suspend().catch(() => {});
+      }
+    }, 15000);
   }
 
   private initCtx() {
@@ -21,6 +32,7 @@ class SoundEffects {
     if (this.ctx && this.ctx.state === "suspended") {
       this.ctx.resume().catch(() => {});
     }
+    this.scheduleIdleSuspend();
     return this.ctx;
   }
 
@@ -38,6 +50,13 @@ class SoundEffects {
   public toggleMute(): boolean {
     this.setMuted(!this.muted);
     return this.muted;
+  }
+
+  /**
+   * Alias for error / rejection buzz
+   */
+  public playErrorBuzz() {
+    this.playAccessDenied();
   }
 
   /**
@@ -200,6 +219,37 @@ class SoundEffects {
 
         osc.start(now + delay);
         osc.stop(now + delay + dur);
+      });
+    } catch {
+      // Ignore audio error
+    }
+  }
+
+  /**
+   * Confirmation / Success chime for saving evidence / artifacts
+   */
+  public playSuccess() {
+    if (this.muted) return;
+    const ctx = this.initCtx();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      [587.33, 880].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+
+        gain.gain.setValueAtTime(0.07, now + idx * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.08 + 0.2);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now + idx * 0.08);
+        osc.stop(now + idx * 0.08 + 0.2);
       });
     } catch {
       // Ignore audio error

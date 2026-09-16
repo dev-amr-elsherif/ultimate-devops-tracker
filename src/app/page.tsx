@@ -127,20 +127,20 @@ export default function Home() {
       <PeripheralRadar />
 
       {/* Terminal Footer */}
-      <footer className="w-full border-t border-slate-800 bg-slate-950/90 py-8 px-4 sm:px-6 lg:px-8 mt-12 text-center font-mono text-xs text-slate-500">
+      <footer className="w-full border-t border-slate-800 bg-slate-950/90 py-8 px-4 sm:px-6 lg:px-8 mt-12 text-center font-mono text-xs text-slate-400">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-cyan-400">
             <Terminal className="w-4 h-4" />
             <span>ULTIMATE DEVOPS TRACKER // ZERO-TO-HERO</span>
           </div>
 
-          <div className="flex items-center gap-4 text-slate-400 text-[11px]">
+          <div className="flex items-center gap-4 text-slate-300 text-[11px]">
             <span>ENGINEERED FOR PRODUCTION MASTERY</span>
             <span>•</span>
             <span>DUAL OBSERVER / COMMANDER SECURITY MODEL</span>
           </div>
 
-          <div className="text-[11px] text-slate-600">
+          <div className="text-[11px] text-slate-400">
             LOCAL STORAGE PERSISTENCE ACTIVE
           </div>
         </div>

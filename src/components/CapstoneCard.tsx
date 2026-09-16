@@ -207,7 +207,12 @@ export const CapstoneCard: React.FC = () => {
                 )}
               </button>
             </div>
-            <pre className="p-4 text-xs font-mono text-cyan-300/90 overflow-x-auto selection:bg-cyan-500/30 selection:text-white leading-relaxed flex-1">
+            <pre
+              tabIndex={0}
+              role="region"
+              aria-label="Repository directory tree structure"
+              className="p-4 text-xs font-mono text-cyan-300/90 overflow-x-auto selection:bg-cyan-500/30 selection:text-white leading-relaxed flex-1 focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-400"
+            >
               <code>{GRADUATION_CAPSTONE.sampleRepoStructure}</code>
             </pre>
           </div>

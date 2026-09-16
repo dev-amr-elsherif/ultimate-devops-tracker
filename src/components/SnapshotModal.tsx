@@ -144,7 +144,16 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
           {/* File Upload Drop Area */}
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-slate-700 hover:border-cyan-400/60 bg-slate-900/60 rounded-xl p-4 text-center cursor-pointer transition-all hover:bg-cyan-950/20 group"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                fileInputRef.current?.click();
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label="Upload JSON snapshot file"
+            className="border-2 border-dashed border-slate-700 hover:border-cyan-400/60 bg-slate-900/60 rounded-xl p-4 text-center cursor-pointer transition-all hover:bg-cyan-950/20 group focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
           >
             <input
               ref={fileInputRef}
@@ -230,7 +239,7 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-lg border border-slate-700 bg-slate-900/80 hover:bg-slate-800 font-mono text-xs text-slate-300 transition-colors"
+              className="flex-1 py-2.5 rounded-lg border border-slate-700 bg-slate-900/80 hover:bg-slate-800 font-mono text-xs text-slate-300 transition-colors focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
             >
               CANCEL
             </button>
@@ -240,7 +249,8 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
                 data-testid="snapshot-submit-btn"
                 type="submit"
                 disabled={!parsedPreview}
-                className={`flex-1 py-2.5 rounded-lg border font-mono text-xs font-bold tracking-wider transition-all flex items-center justify-center gap-1.5 ${
+                aria-label="Ingest and apply telemetry snapshot"
+                className={`flex-1 py-2.5 rounded-lg border font-mono text-xs font-bold tracking-wider transition-all flex items-center justify-center gap-1.5 focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none ${
                   parsedPreview
                     ? "border-cyan-400 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 shadow-[0_0_15px_rgba(0,240,255,0.2)] cursor-pointer"
                     : "border-slate-800 bg-slate-900 text-slate-600 cursor-not-allowed"
@@ -253,7 +263,7 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
               <button
                 type="button"
                 onClick={onPromptAuth}
-                className="flex-1 py-2.5 rounded-lg border border-amber-500/40 bg-amber-950/30 hover:bg-amber-900/40 text-amber-300 font-mono text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 rounded-lg border border-amber-500/40 bg-amber-950/30 hover:bg-amber-900/40 text-amber-300 font-mono text-xs font-bold transition-all flex items-center justify-center gap-1.5 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
               >
                 UNLOCK COMMANDER MODE
               </button>

@@ -48,19 +48,22 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, phaseId }) => {
       }`}
     >
       {/* Task Header Bar */}
-      <div
-        onClick={() => {
-          soundFx.playBlip(550);
-          setIsExpanded(!isExpanded);
-        }}
-        className="flex items-start gap-3.5 p-3.5 cursor-pointer select-none"
-      >
+      <div className="flex items-start gap-3.5 p-3.5">
         {/* Checkbox */}
         <button
           data-testid="task-checkbox"
           type="button"
+          role="checkbox"
+          aria-checked={isChecked}
+          aria-label={
+            isCommander
+              ? isChecked
+                ? `Mark task ${task.title} incomplete`
+                : `Mark task ${task.title} completed`
+              : `Task ${task.title} locked, Commander authentication required`
+          }
           onClick={handleCheckboxClick}
-          className={`mt-0.5 relative w-5 h-5 rounded flex items-center justify-center shrink-0 border transition-all ${
+          className={`mt-0.5 relative w-5 h-5 rounded flex items-center justify-center shrink-0 border transition-all focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none ${
             isChecked
               ? "bg-emerald-500 border-emerald-400 text-slate-950 shadow-[0_0_8px_rgba(0,255,157,0.6)]"
               : isCommander
@@ -82,45 +85,56 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, phaseId }) => {
           ) : null}
         </button>
 
-        {/* Task Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h4
-              className={`text-xs sm:text-sm font-mono font-semibold transition-colors ${
-                isChecked
-                  ? "line-through text-slate-400"
-                  : "text-slate-100 group-hover:text-cyan-300"
-              }`}
-            >
-              {task.title}
-            </h4>
+        {/* Task Info & Expand Trigger */}
+        <button
+          type="button"
+          onClick={() => {
+            soundFx.playBlip(550);
+            setIsExpanded(!isExpanded);
+          }}
+          aria-expanded={isExpanded}
+          aria-label={`Toggle details for task: ${task.title}`}
+          className="flex-1 flex items-start justify-between gap-3 text-left cursor-pointer select-none focus-visible:ring-1 focus-visible:ring-cyan-400 focus-visible:outline-none rounded group"
+        >
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h4
+                className={`text-xs sm:text-sm font-mono font-semibold transition-colors ${
+                  isChecked
+                    ? "line-through text-slate-400"
+                    : "text-slate-100 group-hover:text-cyan-300"
+                }`}
+              >
+                {task.title}
+              </h4>
 
-            {/* Tags */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {task.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800/80 border border-slate-700 text-cyan-400/80"
-                >
-                  #{tag}
-                </span>
-              ))}
+              {/* Tags */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {task.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800/80 border border-slate-700 text-cyan-400/80"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
             </div>
+
+            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+              {task.description}
+            </p>
           </div>
 
-          <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-            {task.description}
-          </p>
-        </div>
-
-        {/* Expand / Collapse Chevron */}
-        <div className="text-slate-500 hover:text-cyan-400 p-1">
-          {isExpanded ? (
-            <ChevronUp className="w-4 h-4 text-cyan-400" />
-          ) : (
-            <ChevronDown className="w-4 h-4" />
-          )}
-        </div>
+          {/* Expand / Collapse Chevron */}
+          <div className="text-slate-500 group-hover:text-cyan-400 p-1 shrink-0">
+            {isExpanded ? (
+              <ChevronUp className="w-4 h-4 text-cyan-400" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </div>
+        </button>
       </div>
 
       {/* Collapsible Details Drawer: Snippet & Acceptance Criteria */}
@@ -137,7 +151,8 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, phaseId }) => {
                 <button
                   type="button"
                   onClick={handleCopy}
-                  className="flex items-center gap-1 text-[11px] font-mono text-slate-400 hover:text-cyan-300 transition-colors p-1"
+                  aria-label={copied ? "Command copied" : `Copy command snippet for ${task.title}`}
+                  className="flex items-center gap-1 text-[11px] font-mono text-slate-400 hover:text-cyan-300 transition-colors p-1 focus-visible:ring-1 focus-visible:ring-cyan-400 focus-visible:outline-none rounded"
                 >
                   {copied ? (
                     <>
@@ -153,7 +168,12 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, phaseId }) => {
                 </button>
               </div>
 
-              <pre className="p-3 text-xs font-mono text-slate-200 overflow-x-auto selection:bg-cyan-500/30 selection:text-white leading-relaxed">
+              <pre
+                tabIndex={0}
+                role="region"
+                aria-label={`Command snippet for ${task.title}`}
+                className="p-3 text-xs font-mono text-slate-200 overflow-x-auto selection:bg-cyan-500/30 selection:text-white leading-relaxed focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-400"
+              >
                 <code>{task.commandSnippet}</code>
               </pre>
             </div>
