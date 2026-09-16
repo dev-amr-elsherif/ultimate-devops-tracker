@@ -1,12 +1,22 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useRoadmap, TelemetrySnapshot, RoadmapFullSnapshot } from "@/context/RoadmapContext";
+import {
+  useRoadmap,
+  TelemetrySnapshot,
+  RoadmapFullSnapshot,
+  FullRoadmapArchive,
+  extractTelemetryData,
+} from "@/context/RoadmapContext";
 import { Upload, FileUp, X, CheckCircle2, AlertTriangle, FileJson, ShieldAlert } from "lucide-react";
 import { soundFx } from "@/lib/audio";
 
 function isFullSnapshot(snapshot: TelemetrySnapshot): snapshot is RoadmapFullSnapshot {
   return "schemaVersion" in snapshot && snapshot.schemaVersion === "2.1.0";
+}
+
+function isArchiveSnapshot(snapshot: TelemetrySnapshot): snapshot is FullRoadmapArchive {
+  return "schemaVersion" in snapshot && snapshot.schemaVersion === "3.0.0";
 }
 
 export const SnapshotModal: React.FC = () => {
@@ -83,23 +93,7 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
         throw new Error("Invalid snapshot format: Expected a JSON object.");
       }
 
-      let taskIds: string[] | undefined;
-      let milestoneIds: string[] | undefined;
-
-      if (parsed.state && typeof parsed.state === "object") {
-        if (Array.isArray(parsed.state.completedTaskIds)) taskIds = parsed.state.completedTaskIds;
-        if (Array.isArray(parsed.state.completedMilestoneIds)) milestoneIds = parsed.state.completedMilestoneIds;
-      }
-
-      if (!taskIds) {
-        if (Array.isArray(parsed.completedTaskIds)) taskIds = parsed.completedTaskIds;
-        else if (Array.isArray(parsed.completedTasks)) taskIds = parsed.completedTasks;
-      }
-
-      if (!milestoneIds) {
-        if (Array.isArray(parsed.completedMilestoneIds)) milestoneIds = parsed.completedMilestoneIds;
-        else if (Array.isArray(parsed.completedMilestones)) milestoneIds = parsed.completedMilestones;
-      }
+      const { taskIds, milestoneIds } = extractTelemetryData(parsed);
 
       if (!taskIds || !milestoneIds) {
         throw new Error("Missing completedTaskIds or completedMilestoneIds arrays.");
@@ -205,7 +199,7 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
               )}
             </div>
             <div className="text-[10px] font-mono text-slate-500 mt-1">
-              Supports Full Telemetry Snapshot v2.1.0 & Legacy Payloads
+              Supports Complete Roadmap Archive v3.0.0, Full Telemetry v2.1.0 & Legacy Payloads
             </div>
           </div>
 
@@ -240,7 +234,13 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
             let progress = 0;
             let schema = "1.0";
 
-            if (isFullSnapshot(parsedPreview)) {
+            if (isArchiveSnapshot(parsedPreview)) {
+              taskCount = parsedPreview.summaryTelemetry.completedTasksCount;
+              milestoneCount = parsedPreview.summaryTelemetry.verifiedMilestonesCount;
+              rank = parsedPreview.engineer.clearanceRank;
+              progress = parsedPreview.summaryTelemetry.completionPercentage;
+              schema = parsedPreview.schemaVersion;
+            } else if (isFullSnapshot(parsedPreview)) {
               taskCount = parsedPreview.state.completedTaskIds.length;
               milestoneCount = parsedPreview.state.completedMilestoneIds.length;
               rank = parsedPreview.telemetry.clearanceRank;

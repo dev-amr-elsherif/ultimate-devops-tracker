@@ -55,6 +55,66 @@ export interface RoadmapProgressState {
   lastUpdated: string;
 }
 
+export interface FullRoadmapArchive {
+  schemaVersion: "3.0.0";
+  exportedAt: string;
+  engine: "Ultimate DevOps Tracker Pro";
+  engineer: {
+    name: string; // "Amr Fathy Elsherif"
+    email: string;
+    role: "commander" | "observer";
+    clearanceRank: string;
+    avatarUrl: string | null;
+  };
+  summaryTelemetry: {
+    completionPercentage: number;
+    completedTasksCount: number;
+    totalTasksCount: number; // 132
+    verifiedMilestonesCount: number;
+    totalMilestonesCount: number; // 13
+  };
+  // THE ENTIRE HYDRATED ROADMAP TREE:
+  phases: Array<{
+    phaseId: string;
+    phaseNumber: number;
+    title: string;
+    description: string;
+    track: "sequential" | "parallel";
+    isFullyDefended: boolean;
+    phaseProgress: number; // 0 to 100%
+    tasks: Array<{
+      taskId: string;
+      taskNumber: string;
+      title: string;
+      description?: string;
+      commands?: string[];
+      category?: string;
+      isCompleted: boolean; // TRUE for completed, FALSE for pending
+      completedAt: string | null;
+      userNotes: string;
+      miniTasks: Record<string, { title: string; completed: boolean }>;
+      proofOfWork?: {
+        repoUrl?: string;
+        liveUrl?: string;
+        notes?: string;
+        updatedAt?: string;
+      };
+    }>;
+    milestone?: {
+      milestoneId: string;
+      title: string;
+      deliverable: string;
+      isVerified: boolean;
+      verifiedAt: string | null;
+    };
+  }>;
+  metadata: {
+    generator: "DevOps Command Center Enterprise";
+    tags: string[];
+    [key: string]: unknown;
+  };
+}
+
 export interface RoadmapFullSnapshot {
   schemaVersion: "2.1.0";
   exportedAt: string;
@@ -117,7 +177,7 @@ export interface LegacyTelemetrySnapshot {
   };
 }
 
-export type TelemetrySnapshot = RoadmapFullSnapshot | LegacyTelemetrySnapshot;
+export type TelemetrySnapshot = FullRoadmapArchive | RoadmapFullSnapshot | LegacyTelemetrySnapshot;
 
 interface RoadmapContextType {
   isMounted: boolean;
@@ -220,6 +280,113 @@ export const checkCommanderStatus = (): boolean => {
   } catch {}
   return false;
 };
+
+// Helper to normalize snapshot payloads across v3.0.0 FullRoadmapArchive, v2.1.0 RoadmapFullSnapshot, and legacy v1.0
+export function extractTelemetryData(raw: unknown): {
+  taskIds: string[] | null;
+  milestoneIds: string[] | null;
+  artifacts: Record<string, ProjectArtifact>;
+  taskDetails: Record<string, unknown>;
+  customAvatarUrl?: string | null;
+} {
+  if (!raw || typeof raw !== "object") {
+    return { taskIds: null, milestoneIds: null, artifacts: {}, taskDetails: {} };
+  }
+  const data = raw as Record<string, unknown>;
+  let taskIds: string[] | null = null;
+  let milestoneIds: string[] | null = null;
+  let artifacts: Record<string, ProjectArtifact> = {};
+  let taskDetails: Record<string, unknown> = {};
+  let customAvatarUrl: string | null = null;
+
+  // 1. Check for schemaVersion "3.0.0" or FullRoadmapArchive with phases array
+  if (Array.isArray(data.phases)) {
+    const extractedTaskIds: string[] = [];
+    const extractedMilestoneIds: string[] = [];
+
+    data.phases.forEach((phase) => {
+      if (phase && typeof phase === "object") {
+        const p = phase as Record<string, unknown>;
+        if (Array.isArray(p.tasks)) {
+          p.tasks.forEach((t) => {
+            if (t && typeof t === "object") {
+              const taskObj = t as Record<string, unknown>;
+              const taskId = typeof taskObj.taskId === "string" ? taskObj.taskId : String(taskObj.id || "");
+              if (taskId) {
+                if (taskObj.isCompleted === true) {
+                  extractedTaskIds.push(taskId);
+                }
+                if (taskObj.userNotes || taskObj.miniTasks || taskObj.completedAt) {
+                  taskDetails[taskId] = {
+                    completed: !!taskObj.isCompleted,
+                    completedAt: taskObj.completedAt || undefined,
+                    userNotes: taskObj.userNotes || undefined,
+                    miniTasks: taskObj.miniTasks || undefined,
+                  };
+                }
+                if (taskObj.proofOfWork && typeof taskObj.proofOfWork === "object") {
+                  artifacts[taskId] = taskObj.proofOfWork as ProjectArtifact;
+                }
+              }
+            }
+          });
+        }
+
+        if (p.milestone && typeof p.milestone === "object") {
+          const m = p.milestone as Record<string, unknown>;
+          const msId = typeof m.milestoneId === "string" ? m.milestoneId : String(m.id || "");
+          if (msId && m.isVerified === true) {
+            extractedMilestoneIds.push(msId);
+          }
+        }
+      }
+    });
+
+    taskIds = extractedTaskIds;
+    milestoneIds = extractedMilestoneIds;
+
+    if (data.engineer && typeof data.engineer === "object") {
+      const eng = data.engineer as Record<string, unknown>;
+      if (typeof eng.avatarUrl === "string" && eng.avatarUrl.trim()) {
+        customAvatarUrl = eng.avatarUrl;
+      }
+    }
+  }
+
+  // 2. Check state object (v2.1.0 or custom)
+  if (data.state && typeof data.state === "object") {
+    const stateObj = data.state as Record<string, unknown>;
+    if (Array.isArray(stateObj.completedTaskIds)) {
+      taskIds = taskIds ? Array.from(new Set([...taskIds, ...(stateObj.completedTaskIds as string[])])) : (stateObj.completedTaskIds as string[]);
+    }
+    if (Array.isArray(stateObj.completedMilestoneIds)) {
+      milestoneIds = milestoneIds ? Array.from(new Set([...milestoneIds, ...(stateObj.completedMilestoneIds as string[])])) : (stateObj.completedMilestoneIds as string[]);
+    }
+    if (stateObj.artifacts && typeof stateObj.artifacts === "object") {
+      artifacts = { ...artifacts, ...(stateObj.artifacts as Record<string, ProjectArtifact>) };
+    }
+    if (stateObj.taskDetails && typeof stateObj.taskDetails === "object") {
+      taskDetails = { ...taskDetails, ...(stateObj.taskDetails as Record<string, unknown>) };
+    }
+  }
+
+  // 3. Fallback for legacy v1.0 top-level arrays
+  if (!taskIds) {
+    if (Array.isArray(data.completedTaskIds)) taskIds = data.completedTaskIds as string[];
+    else if (Array.isArray(data.completedTasks)) taskIds = data.completedTasks as string[];
+  }
+
+  if (!milestoneIds) {
+    if (Array.isArray(data.completedMilestoneIds)) milestoneIds = data.completedMilestoneIds as string[];
+    else if (Array.isArray(data.completedMilestones)) milestoneIds = data.completedMilestones as string[];
+  }
+
+  if (data.projectArtifacts && typeof data.projectArtifacts === "object") {
+    artifacts = { ...artifacts, ...(data.projectArtifacts as Record<string, ProjectArtifact>) };
+  }
+
+  return { taskIds, milestoneIds, artifacts, taskDetails, customAvatarUrl };
+}
 
 const RoadmapContext = createContext<RoadmapContextType | undefined>(undefined);
 
@@ -620,12 +787,17 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return { title: "Cadet", level: 1, color: "text-slate-400", badge: "CR-01 // CADET" };
   }, [completionPercentage]);
 
-  // Export Snapshot JSON (v2.1.0 RoadmapFullSnapshot)
+  // Export Snapshot JSON (v3.0.0 FullRoadmapArchive - Complete Curriculum Tree)
   const exportSnapshot = useCallback(() => {
     soundFx.playBlip(980);
     const taskDetails: Record<
       string,
-      { completed: boolean; completedAt?: string; miniTasks?: Record<string, boolean>; userNotes?: string }
+      {
+        completed: boolean;
+        completedAt?: string;
+        miniTasks?: Record<string, boolean | { title: string; completed: boolean }>;
+        userNotes?: string;
+      }
     > = {};
 
     try {
@@ -635,40 +807,147 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     } catch {}
 
+    const nowIso = new Date().toISOString();
+
     for (const taskId of completedTaskIds) {
       if (!taskDetails[taskId]) {
         taskDetails[taskId] = {
           completed: true,
-          completedAt: new Date().toISOString(),
+          completedAt: nowIso,
         };
       } else {
         taskDetails[taskId].completed = true;
+        if (!taskDetails[taskId].completedAt) {
+          taskDetails[taskId].completedAt = nowIso;
+        }
       }
     }
 
-    const data: RoadmapFullSnapshot = {
-      schemaVersion: "2.1.0",
-      exportedAt: new Date().toISOString(),
+    // Hydrate the complete roadmap curriculum tree
+    const hydratedPhases = ROADMAP_PHASES.map((phase, phaseIdx) => {
+      const phaseTasks = phase.modules.flatMap((m) => m.tasks);
+      const totalInPhase = phaseTasks.length;
+      let completedInPhase = 0;
+
+      const hydratedTasks = phaseTasks.map((task) => {
+        const isDone = completedTaskIds.has(task.id);
+        if (isDone) completedInPhase++;
+
+        const detail = taskDetails[task.id];
+        const taskArtifact = projectArtifacts[task.id];
+
+        // Format miniTasks
+        const miniTasksFormatted: Record<string, { title: string; completed: boolean }> = {};
+        if (detail?.miniTasks) {
+          Object.entries(detail.miniTasks).forEach(([key, val]) => {
+            if (typeof val === "boolean") {
+              miniTasksFormatted[key] = { title: key, completed: val };
+            } else if (val && typeof val === "object") {
+              miniTasksFormatted[key] = {
+                title: (val as { title?: string }).title || key,
+                completed: !!(val as { completed?: boolean }).completed,
+              };
+            }
+          });
+        }
+
+        return {
+          taskId: task.id,
+          taskNumber: task.id.replace(/^task-/, ""),
+          title: task.title,
+          description: task.description,
+          commands: task.commandSnippet ? [task.commandSnippet] : [],
+          category: task.tags?.[0] || phase.title,
+          isCompleted: isDone,
+          completedAt: isDone ? (detail?.completedAt || nowIso) : null,
+          userNotes: detail?.userNotes || "",
+          miniTasks: miniTasksFormatted,
+          ...(taskArtifact
+            ? {
+                proofOfWork: {
+                  repoUrl: taskArtifact.repoUrl,
+                  liveUrl: taskArtifact.liveUrl,
+                  notes: taskArtifact.notes,
+                  updatedAt: taskArtifact.updatedAt,
+                },
+              }
+            : {}),
+        };
+      });
+
+      const phaseProgress = totalInPhase > 0 ? Math.round((completedInPhase / totalInPhase) * 100) : 0;
+
+      const rawMilestone = phase.milestones?.[0];
+      let hydratedMilestone:
+        | {
+            milestoneId: string;
+            title: string;
+            deliverable: string;
+            isVerified: boolean;
+            verifiedAt: string | null;
+          }
+        | undefined = undefined;
+
+      if (rawMilestone) {
+        const isMsVerified = completedMilestoneIds.has(rawMilestone.id);
+        const msArtifact = projectArtifacts[rawMilestone.id];
+        hydratedMilestone = {
+          milestoneId: rawMilestone.id,
+          title: rawMilestone.title,
+          deliverable: rawMilestone.deliverables ? rawMilestone.deliverables.join("; ") : rawMilestone.description,
+          isVerified: isMsVerified,
+          verifiedAt: isMsVerified ? (msArtifact?.updatedAt || nowIso) : null,
+        };
+      }
+
+      const isPhaseFullyDefended =
+        totalInPhase > 0 &&
+        completedInPhase === totalInPhase &&
+        (!rawMilestone || completedMilestoneIds.has(rawMilestone.id));
+
+      const trackType: "sequential" | "parallel" =
+        phase.mode?.toLowerCase().includes("parallel") ? "parallel" : "sequential";
+
+      const phaseNum =
+        typeof phase.phaseNumber === "number"
+          ? phase.phaseNumber
+          : parseInt(String(phase.phaseNumber), 10) || phaseIdx + 1;
+
+      return {
+        phaseId: phase.id,
+        phaseNumber: phaseNum,
+        title: phase.title,
+        description: phase.description,
+        track: trackType,
+        isFullyDefended: isPhaseFullyDefended,
+        phaseProgress,
+        tasks: hydratedTasks,
+        ...(hydratedMilestone ? { milestone: hydratedMilestone } : {}),
+      };
+    });
+
+    const data: FullRoadmapArchive = {
+      schemaVersion: "3.0.0",
+      exportedAt: nowIso,
       engine: "Ultimate DevOps Tracker Pro",
-      user: {
-        email: driveUser?.email || undefined,
+      engineer: {
+        name: "Amr Fathy Elsherif",
+        email: driveUser?.email || "dev.amrelsherif@gmail.com",
         role: isCommander ? "commander" : "observer",
+        clearanceRank: clearanceRank.title,
+        avatarUrl: customAvatarUrl,
       },
-      telemetry: {
+      summaryTelemetry: {
         completionPercentage,
         completedTasksCount,
+        totalTasksCount: totalTasks,
         verifiedMilestonesCount: completedMilestonesCount,
-        clearanceRank: clearanceRank.title,
+        totalMilestonesCount: totalMilestones,
       },
-      state: {
-        completedTaskIds: Array.from(completedTaskIds),
-        taskDetails,
-        completedMilestoneIds: Array.from(completedMilestoneIds),
-        artifacts: projectArtifacts,
-      },
+      phases: hydratedPhases,
       metadata: {
-        customNotes: "Telemetry snapshot captured from Ultimate DevOps Tracker Pro",
-        tags: ["devops", "cloud-architecture", "systems-engineering"],
+        generator: "DevOps Command Center Enterprise",
+        tags: ["devops", "cloud-architecture", "curriculum-archive", "systems-engineering"],
       },
     };
 
@@ -677,13 +956,13 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `devops-telemetry-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `devops-complete-roadmap-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     addToast({
       type: "success",
       title: "SNAPSHOT EXPORTED",
-      description: "Roadmap telemetry JSON (v2.1.0) successfully downloaded.",
+      description: "Complete curriculum archive JSON (v3.0.0) with live tree state downloaded.",
     });
   }, [
     completedTaskIds,
@@ -693,59 +972,13 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     completionPercentage,
     completedTasksCount,
     completedMilestonesCount,
+    totalTasks,
+    totalMilestones,
     driveUser?.email,
     isCommander,
+    customAvatarUrl,
     addToast,
   ]);
-
-// Helper to normalize snapshot payloads across v2.1.0 RoadmapFullSnapshot and legacy v1.0
-function extractTelemetryData(raw: unknown): {
-  taskIds: string[] | null;
-  milestoneIds: string[] | null;
-  artifacts: Record<string, ProjectArtifact>;
-  taskDetails: Record<string, unknown>;
-} {
-  if (!raw || typeof raw !== "object") {
-    return { taskIds: null, milestoneIds: null, artifacts: {}, taskDetails: {} };
-  }
-  const data = raw as Record<string, unknown>;
-  let taskIds: string[] | null = null;
-  let milestoneIds: string[] | null = null;
-  let artifacts: Record<string, ProjectArtifact> = {};
-  let taskDetails: Record<string, unknown> = {};
-
-  if (data.state && typeof data.state === "object") {
-    const stateObj = data.state as Record<string, unknown>;
-    if (Array.isArray(stateObj.completedTaskIds)) {
-      taskIds = stateObj.completedTaskIds as string[];
-    }
-    if (Array.isArray(stateObj.completedMilestoneIds)) {
-      milestoneIds = stateObj.completedMilestoneIds as string[];
-    }
-    if (stateObj.artifacts && typeof stateObj.artifacts === "object") {
-      artifacts = stateObj.artifacts as Record<string, ProjectArtifact>;
-    }
-    if (stateObj.taskDetails && typeof stateObj.taskDetails === "object") {
-      taskDetails = stateObj.taskDetails as Record<string, unknown>;
-    }
-  }
-
-  if (!taskIds) {
-    if (Array.isArray(data.completedTaskIds)) taskIds = data.completedTaskIds as string[];
-    else if (Array.isArray(data.completedTasks)) taskIds = data.completedTasks as string[];
-  }
-
-  if (!milestoneIds) {
-    if (Array.isArray(data.completedMilestoneIds)) milestoneIds = data.completedMilestoneIds as string[];
-    else if (Array.isArray(data.completedMilestones)) milestoneIds = data.completedMilestones as string[];
-  }
-
-  if (Object.keys(artifacts).length === 0 && data.projectArtifacts && typeof data.projectArtifacts === "object") {
-    artifacts = data.projectArtifacts as Record<string, ProjectArtifact>;
-  }
-
-  return { taskIds, milestoneIds, artifacts, taskDetails };
-}
 
   // Ingest / Import Snapshot JSON
   const importSnapshot = useCallback(
@@ -772,8 +1005,13 @@ function extractTelemetryData(raw: unknown): {
           throw new Error("Invalid snapshot format: Expected a JSON object.");
         }
 
-        const { taskIds, milestoneIds, artifacts: artifactsMap, taskDetails: taskDetailsMap } =
-          extractTelemetryData(raw);
+        const {
+          taskIds,
+          milestoneIds,
+          artifacts: artifactsMap,
+          taskDetails: taskDetailsMap,
+          customAvatarUrl: importedAvatar,
+        } = extractTelemetryData(raw);
 
         if (!taskIds || !milestoneIds) {
           throw new Error("Missing completedTaskIds or completedMilestoneIds arrays.");
@@ -785,6 +1023,13 @@ function extractTelemetryData(raw: unknown): {
         setCompletedTaskIds(nextTasks);
         setCompletedMilestoneIds(nextMilestones);
         saveProgress(nextTasks, nextMilestones);
+
+        if (importedAvatar) {
+          setCustomAvatarUrl(importedAvatar);
+          try {
+            localStorage.setItem(AVATAR_STORAGE_KEY, importedAvatar);
+          } catch {}
+        }
 
         if (artifactsMap && typeof artifactsMap === "object") {
           setProjectArtifacts(artifactsMap);

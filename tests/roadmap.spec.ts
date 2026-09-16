@@ -276,7 +276,22 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     const downloadPromise = page.waitForEvent("download");
     await page.getByTestId("export-snapshot-btn").click();
     const download = await downloadPromise;
-    expect(download.suggestedFilename()).toMatch(/devops-telemetry.*\.json/);
+    expect(download.suggestedFilename()).toMatch(/devops-(?:complete-roadmap|telemetry).*\.json/);
+
+    // Verify complete curriculum tree payload
+    const stream = await download.createReadStream();
+    if (stream) {
+      const chunks: Buffer[] = [];
+      for await (const chunk of stream) {
+        chunks.push(chunk as Buffer);
+      }
+      const json = JSON.parse(Buffer.concat(chunks).toString("utf-8"));
+      expect(json.schemaVersion).toBe("3.0.0");
+      expect(json.phases).toHaveLength(12);
+      const totalExportedTasks = json.phases.reduce((sum: number, p: { tasks: unknown[] }) => sum + p.tasks.length, 0);
+      expect(totalExportedTasks).toBe(132);
+      expect(json.engineer.name).toBe("Amr Fathy Elsherif");
+    }
 
     // Verify Danger Zone Reset / Purge with ConfirmModal
     await ingestBtn.click();
