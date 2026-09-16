@@ -4,7 +4,7 @@ import "./globals.css";
 import { RoadmapProvider } from "@/context/RoadmapContext";
 import { CyberCanvas } from "@/components/CyberCanvas";
 import { ToastContainer } from "@/components/Toast";
-import { PasscodeModal } from "@/components/PasscodeModal";
+import { FloatingDock } from "@/components/FloatingDock";
 import { SnapshotModal } from "@/components/SnapshotModal";
 import { ClearanceBadgeModal } from "@/components/ClearanceBadgeModal";
 
@@ -82,8 +82,8 @@ export default function RootLayout({
             {children}
           </div>
 
-          {/* Modal & Toast Alerts */}
-          <PasscodeModal />
+          {/* Floating Actions Dock & Modals */}
+          <FloatingDock />
           <SnapshotModal />
           <ClearanceBadgeModal />
           <ToastContainer />

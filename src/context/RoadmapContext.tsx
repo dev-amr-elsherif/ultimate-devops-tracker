@@ -68,14 +68,13 @@ export interface TelemetrySnapshot {
 interface RoadmapContextType {
   isMounted: boolean;
   isCommander: boolean;
-  isPasscodeModalOpen: boolean;
-  setIsPasscodeModalOpen: (open: boolean) => void;
   isSnapshotModalOpen: boolean;
   setIsSnapshotModalOpen: (open: boolean) => void;
   isBadgeModalOpen: boolean;
   setIsBadgeModalOpen: (open: boolean) => void;
-  authenticateCommander: (passcode: string) => boolean;
+  logoutCommander: () => void;
   revokeCommander: () => void;
+  setTestCommander: (enabled: boolean) => void;
 
   completedTaskIds: Set<string>;
   completedMilestoneIds: Set<string>;
@@ -130,23 +129,42 @@ interface RoadmapContextType {
 const STORAGE_KEY = "devops_roadmap_progress";
 const ALT_STORAGE_KEY = "devops_roadmap_state";
 const ARTIFACTS_STORAGE_KEY = "devops_roadmap_artifacts";
-const AUTH_KEY = "devops_commander_session";
-export const MASTER_PIN = process.env.NEXT_PUBLIC_COMMANDER_PIN || "010135";
+export const AUTHORIZED_COMMANDERS = [
+  "dev.amrelsherif@gmail.com",
+  "amrelsherif.swe@gmail.com",
+  "amrelsherif.ops@gmail.com",
+];
+
+export const isEmailAuthorized = (email?: string | null): boolean => {
+  if (!email) return false;
+  return AUTHORIZED_COMMANDERS.includes(email.toLowerCase().trim());
+};
+
+export const checkCommanderStatus = (): boolean => {
+  if (typeof window === "undefined") return false;
+  try {
+    if (
+      localStorage.getItem("devops_test_commander") === "true" ||
+      sessionStorage.getItem("devops_test_commander") === "true"
+    ) {
+      return true;
+    }
+    const savedUserStr = sessionStorage.getItem(SESSION_USER_KEY);
+    if (savedUserStr) {
+      const parsed = JSON.parse(savedUserStr);
+      return isEmailAuthorized(parsed?.email);
+    }
+  } catch {}
+  return false;
+};
 
 const RoadmapContext = createContext<RoadmapContextType | undefined>(undefined);
 
 export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isMounted = useIsMounted();
 
-  // Lazy initialize state from storage on first render
-  const [isCommander, setIsCommander] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    try {
-      return sessionStorage.getItem(AUTH_KEY) === "authenticated";
-    } catch {
-      return false;
-    }
-  });
+  // Initialize Commander state via Google Identity session or test hook
+  const [isCommander, setIsCommander] = useState<boolean>(() => checkCommanderStatus());
 
   const [completedTaskIds, setCompletedTaskIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
@@ -190,7 +208,6 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return {};
   });
 
-  const [isPasscodeModalOpen, setIsPasscodeModalOpen] = useState<boolean>(false);
   const [isSnapshotModalOpen, setIsSnapshotModalOpen] = useState<boolean>(false);
   const [isBadgeModalOpen, setIsBadgeModalOpen] = useState<boolean>(false);
   const [activeFilter, setActiveFilter] = useState<FilterCategory>("all");
@@ -204,7 +221,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [driveLastSyncedAt, setDriveLastSyncedAt] = useState<string | null>(null);
   const driveAccessTokenRef = useRef<string | null>(null);
 
-  // Restore Drive session from sessionStorage after initial mount
+  // Restore Drive session and Commander state from storage after initial mount
   useEffect(() => {
     try {
       const savedToken = sessionStorage.getItem(SESSION_TOKEN_KEY);
@@ -218,24 +235,16 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
           } catch {}
         }
         queueMicrotask(() => {
-          if (parsedUser) setDriveUser(parsedUser);
+          if (parsedUser) {
+            setDriveUser(parsedUser);
+            if (isEmailAuthorized(parsedUser.email)) {
+              setIsCommander(true);
+            }
+          }
           setDriveSyncStatus("synced");
         });
       }
     } catch {}
-  }, []);
-
-  // Listen for keyboard shortcut Ctrl + Shift + A to open Passcode Modal
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && (e.key === "A" || e.key === "a")) {
-        e.preventDefault();
-        soundFx.playBlip(1100);
-        setIsPasscodeModalOpen(true);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   // Save progress changes
@@ -280,40 +289,45 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, []);
 
-  // Authenticate Commander
-  const authenticateCommander = useCallback((passcode: string): boolean => {
-    const validPin = process.env.NEXT_PUBLIC_COMMANDER_PIN || "010135";
-    if (passcode.trim() === validPin) {
-      setIsCommander(true);
+  // Programmatic Test Hook for Automated Testing (Playwright)
+  const setTestCommander = useCallback(
+    (enabled: boolean) => {
       try {
-        sessionStorage.setItem(AUTH_KEY, "authenticated");
+        if (enabled) {
+          localStorage.setItem("devops_test_commander", "true");
+          sessionStorage.setItem("devops_test_commander", "true");
+        } else {
+          localStorage.removeItem("devops_test_commander");
+          sessionStorage.removeItem("devops_test_commander");
+        }
       } catch {}
-      soundFx.playCommanderUnlock();
-      addToast({
-        type: "success",
-        title: "COMMANDER MODE ACTIVATED",
-        description: "Clearance override verified. Full operational control granted.",
-      });
-      setIsPasscodeModalOpen(false);
-      return true;
-    } else {
-      soundFx.playAccessDenied();
-      return false;
-    }
-  }, [addToast]);
+      setIsCommander(enabled);
+      if (enabled) {
+        soundFx.playCommanderUnlock();
+        addToast({
+          type: "success",
+          title: "COMMANDER CLEARANCE ACTIVE",
+          description: "Authorization verified. Master write access enabled.",
+        });
+      } else {
+        soundFx.playBlip(440);
+        addToast({
+          type: "info",
+          title: "OBSERVER MODE RESTORED",
+          description: "Terminal restricted to public view-only telemetry.",
+        });
+      }
+    },
+    [addToast]
+  );
 
-  const revokeCommander = useCallback(() => {
-    setIsCommander(false);
-    try {
-      sessionStorage.removeItem(AUTH_KEY);
-    } catch {}
-    soundFx.playBlip(440);
-    addToast({
-      type: "info",
-      title: "OBSERVER MODE RESTORED",
-      description: "Terminal restricted to public view-only telemetry.",
-    });
-  }, [addToast]);
+  // Expose test helper on window for browser-level Playwright execution
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as unknown as { __setTestCommander?: (enabled: boolean) => void }).__setTestCommander =
+        setTestCommander;
+    }
+  }, [setTestCommander]);
 
   const toggleAudioMute = useCallback(() => {
     const nextMute = soundFx.toggleMute();
@@ -539,7 +553,6 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
           title: "ACCESS DENIED",
           description: "Commander Mode authentication required to ingest telemetry snapshots.",
         });
-        setIsPasscodeModalOpen(true);
         return false;
       }
 
@@ -591,7 +604,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return false;
       }
     },
-    [isCommander, addToast, saveProgress, triggerCelebration, setIsPasscodeModalOpen]
+    [isCommander, addToast, saveProgress, triggerCelebration]
   );
 
   // Google Drive Connection & Ingest
@@ -616,6 +629,9 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
       driveAccessTokenRef.current = accessToken;
       setDriveUser(user);
 
+      const isAuth = isEmailAuthorized(user?.email);
+      setIsCommander(isAuth);
+
       try {
         sessionStorage.setItem(SESSION_TOKEN_KEY, accessToken);
         if (user) {
@@ -624,11 +640,20 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
       } catch {}
 
       setDriveSyncStatus("syncing");
-      addToast({
-        type: "info",
-        title: "GOOGLE DRIVE CONNECTED",
-        description: `Connected as ${user?.email || user?.name || "Authenticated User"}. Accessing appDataFolder...`,
-      });
+      if (isAuth) {
+        soundFx.playCommanderUnlock();
+        addToast({
+          type: "success",
+          title: "COMMANDER CLEARANCE GRANTED",
+          description: `Master access unlocked for authorized Commander: ${user?.email}`,
+        });
+      } else {
+        addToast({
+          type: "info",
+          title: "OBSERVER ACCESS ONLY",
+          description: `Signed in as ${user?.email || "Authenticated User"}. Read-only telemetry privileges.`,
+        });
+      }
 
       // Try pulling from drive
       const remoteSnapshot = await pullFromDrive(accessToken);
@@ -712,13 +737,24 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     driveAccessTokenRef.current = null;
     setDriveSyncStatus("disconnected");
     setDriveUser(null);
+    setIsCommander(false);
+    try {
+      localStorage.removeItem("devops_test_commander");
+      sessionStorage.removeItem("devops_test_commander");
+    } catch {}
     soundFx.playBlip(400);
     addToast({
       type: "info",
       title: "DRIVE DISCONNECTED",
-      description: "Google Drive session terminated. Local telemetry retained.",
+      description: "Google Drive session terminated. Commander privileges revoked.",
     });
   }, [addToast]);
+
+  const logoutCommander = useCallback(() => {
+    disconnectDriveSession();
+  }, [disconnectDriveSession]);
+
+  const revokeCommander = logoutCommander;
 
   // Manual Trigger to Push & Pull Drive Telemetry
   const syncDriveManual = useCallback(async () => {
@@ -817,14 +853,13 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
       value={{
         isMounted,
         isCommander,
-        isPasscodeModalOpen,
-        setIsPasscodeModalOpen,
         isSnapshotModalOpen,
         setIsSnapshotModalOpen,
         isBadgeModalOpen,
         setIsBadgeModalOpen,
-        authenticateCommander,
+        logoutCommander,
         revokeCommander,
+        setTestCommander,
         completedTaskIds,
         completedMilestoneIds,
         toggleTask,

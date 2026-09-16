@@ -10,7 +10,7 @@ export const SnapshotModal: React.FC = () => {
     isSnapshotModalOpen,
     setIsSnapshotModalOpen,
     isCommander,
-    setIsPasscodeModalOpen,
+    connectDrive,
     importSnapshot,
   } = useRoadmap();
 
@@ -32,7 +32,7 @@ export const SnapshotModal: React.FC = () => {
       onClose={() => setIsSnapshotModalOpen(false)}
       onPromptAuth={() => {
         setIsSnapshotModalOpen(false);
-        setIsPasscodeModalOpen(true);
+        connectDrive();
       }}
       onImport={importSnapshot}
     />

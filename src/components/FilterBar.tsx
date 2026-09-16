@@ -14,7 +14,6 @@ export const FilterBar: React.FC = () => {
     isCommander,
     exportSnapshot,
     resetProgress,
-    setIsPasscodeModalOpen,
     setIsSnapshotModalOpen,
   } = useRoadmap();
 
@@ -26,7 +25,6 @@ export const FilterBar: React.FC = () => {
   const handleResetClick = () => {
     if (!isCommander) {
       soundFx.playAccessDenied();
-      setIsPasscodeModalOpen(true);
       return;
     }
     if (confirm("WARNING: Are you certain you wish to purge all recorded roadmap telemetry? This cannot be undone.")) {

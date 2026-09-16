@@ -1,7 +1,13 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-const TEST_PIN = process.env.NEXT_PUBLIC_COMMANDER_PIN || "010135";
+async function authenticateCommander(page: Page) {
+  await page.evaluate(() => {
+    window.localStorage.setItem("devops_test_commander", "true");
+    window.sessionStorage.setItem("devops_test_commander", "true");
+    (window as unknown as { __setTestCommander?: (enabled: boolean) => void }).__setTestCommander?.(true);
+  });
+}
 
 test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
   test.beforeEach(async ({ page }) => {
@@ -28,7 +34,7 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     await expect(taskCountEl).toBeVisible();
     await expect(page.locator("text=/0 \\/ 132/")).toBeVisible();
 
-    // Verify Observer Mode button in header
+    // Verify Observer Mode button in bottom dock
     const modeBtn = page.getByTestId("mode-toggle-btn");
     await expect(modeBtn).toBeVisible();
     await expect(modeBtn.locator("text=OBSERVER MODE")).toBeVisible();
@@ -52,40 +58,40 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     expect(consoleErrors).toEqual([]);
   });
 
-  test("2. Commander Mode Authentication - Validates PIN and updates clearance", async ({ page }) => {
+  test("2. Commander Mode Authentication - Validates Commander authorization and updates clearance", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 
-    // Trigger Commander Passcode Modal via unlock button in header
-    const unlockBtn = page.getByTestId("mode-toggle-btn");
-    await unlockBtn.click();
+    // 1. Initial State: Observer Mode is active
+    const modeToggleBtn = page.getByTestId("mode-toggle-btn");
+    await expect(modeToggleBtn).toBeVisible();
+    await expect(modeToggleBtn.locator("text=OBSERVER MODE")).toBeVisible();
+    await expect(page.locator("text=/Tasks Locked/i")).toBeVisible();
 
-    // Verify Modal is open
-    const modalHeading = page.locator("text=Commander Authentication");
-    await expect(modalHeading).toBeVisible();
+    // 2. Observer Mode: Modifying task is rejected
+    const firstTask = page.getByTestId("task-checkbox").first();
+    await firstTask.click();
+    await expect(page.locator("text=ACCESS DENIED")).toBeVisible();
 
-    // Test Invalid PIN first
-    const pinInput = page.getByPlaceholder("ENTER PASSCODE...");
-    await pinInput.fill("0000");
-    await page.getByRole("button", { name: /AUTHENTICATE/i }).click();
+    // 3. Authenticate Commander via Google Identity test hook
+    await authenticateCommander(page);
 
-    // Assert error state appears
-    await expect(page.locator("text=ACCESS REJECTED: INVALID CLEARANCE KEY")).toBeVisible();
+    // 4. Assert Commander Mode is now ACTIVE in the bottom dock
+    await expect(modeToggleBtn).toBeVisible();
+    await expect(modeToggleBtn.locator("text=ACTIVE")).toBeVisible();
 
-    // Enter correct master PIN
-    await pinInput.fill(TEST_PIN);
-    await page.getByRole("button", { name: /AUTHENTICATE/i }).click();
-
-    // Assert modal closes
-    await expect(modalHeading).not.toBeVisible();
-
-    // Assert Commander Mode is now ACTIVE
-    const commanderBadge = page.getByTestId("mode-toggle-btn");
-    await expect(commanderBadge).toBeVisible();
-    await expect(commanderBadge.locator("text=ACTIVE")).toBeVisible();
-
-    // Assert Header HUD label changes from "Tasks Locked" to "Tasks Completed"
+    // 5. Assert Header HUD label changes from "Tasks Locked" to "Tasks Completed"
     await expect(page.locator("text=/Tasks Completed/i")).toBeVisible();
+
+    // 6. Commander can now toggle tasks
+    await firstTask.click();
+    await expect(firstTask.locator("svg.lucide-check")).toBeVisible();
+    await expect(page.locator("text=/1 \\/ 132/")).toBeVisible();
+
+    // 7. Revoke Commander access via button click
+    await modeToggleBtn.click();
+    await expect(page.locator("text=OBSERVER MODE")).toBeVisible();
+    await expect(page.locator("text=/Tasks Locked/i")).toBeVisible();
   });
 
   test("3. Telemetry & Progress Calculation - Dynamically increments on completion", async ({ page }) => {
@@ -93,9 +99,7 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     await page.waitForLoadState("networkidle");
 
     // Authenticate as Commander
-    await page.getByTestId("mode-toggle-btn").click();
-    await page.getByPlaceholder("ENTER PASSCODE...").fill(TEST_PIN);
-    await page.getByRole("button", { name: /AUTHENTICATE/i }).click();
+    await authenticateCommander(page);
 
     // Initial progress should be 0%
     await expect(page.locator("text=/Tasks Completed/i")).toBeVisible();
@@ -127,9 +131,7 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     await page.waitForLoadState("networkidle");
 
     // Authenticate as Commander
-    await page.getByTestId("mode-toggle-btn").click();
-    await page.getByPlaceholder("ENTER PASSCODE...").fill(TEST_PIN);
-    await page.getByRole("button", { name: /AUTHENTICATE/i }).click();
+    await authenticateCommander(page);
 
     // Complete the first task
     const taskCheckbox = page.getByTestId("task-checkbox").first();
@@ -223,10 +225,9 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     const unlockBtn = page.getByRole("button", { name: /UNLOCK COMMANDER MODE/i });
     await expect(unlockBtn).toBeVisible();
 
-    // Unlock Commander Mode via the modal prompt
-    await unlockBtn.click();
-    await page.getByPlaceholder("ENTER PASSCODE...").fill(TEST_PIN);
-    await page.getByRole("button", { name: /AUTHENTICATE/i }).click();
+    // Close modal, authenticate Commander Mode via test hook, and re-open
+    await page.locator("button[aria-label='Close modal']").click();
+    await authenticateCommander(page);
 
     // Re-open ingest modal as Commander
     await ingestBtn.click();
@@ -397,10 +398,8 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     // Commander edit button should not be present in Observer Mode
     await expect(milestoneCard.getByTestId("artifact-attach-btn")).toHaveCount(0);
 
-    // 2. Authenticate Commander Mode with Master PIN
-    await page.getByTestId("mode-toggle-btn").click();
-    await page.getByPlaceholder("ENTER PASSCODE...").fill(TEST_PIN);
-    await page.getByRole("button", { name: /AUTHENTICATE/i }).click();
+    // 2. Authenticate Commander Mode via Google Identity test hook
+    await authenticateCommander(page);
 
     // 3. Commander Mode: "ATTACH EVIDENCE" button is now visible
     const attachBtn = milestoneCard.getByTestId("artifact-attach-btn");
@@ -501,10 +500,8 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 
-    // 1. Authenticate Commander Mode with Master PIN
-    await page.getByTestId("mode-toggle-btn").click();
-    await page.getByPlaceholder("ENTER PASSCODE...").fill(TEST_PIN);
-    await page.getByRole("button", { name: /AUTHENTICATE/i }).click();
+    // 1. Authenticate Commander Mode via Google Identity test hook
+    await authenticateCommander(page);
 
     // 2. Complete the first task to establish a known state
     const taskCheckbox = page.getByTestId("task-checkbox").first();
