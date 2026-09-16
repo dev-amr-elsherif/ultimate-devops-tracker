@@ -2,6 +2,9 @@ import { test, expect, Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 async function authenticateCommander(page: Page) {
+  await page.waitForFunction(
+    () => typeof (window as unknown as { __setTestCommander?: (enabled: boolean) => void }).__setTestCommander === "function"
+  );
   await page.evaluate(() => {
     window.localStorage.setItem("devops_test_commander", "true");
     window.sessionStorage.setItem("devops_test_commander", "true");
@@ -35,9 +38,9 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     await expect(page.locator("text=/0 \\/ 132/")).toBeVisible();
 
     // Verify Observer Mode button in bottom dock
-    const modeBtn = page.getByTestId("mode-toggle-btn");
+    const modeBtn = page.getByTestId("auth-mode-btn");
     await expect(modeBtn).toBeVisible();
-    await expect(modeBtn.locator("text=OBSERVER MODE")).toBeVisible();
+    await expect(modeBtn.locator("text=/Observer Mode/i")).toBeVisible();
 
     // Locate the first task's checkbox button using test id
     const firstTaskCheckbox = page.getByTestId("task-checkbox").first();
@@ -63,9 +66,9 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     await page.waitForLoadState("networkidle");
 
     // 1. Initial State: Observer Mode is active
-    const modeToggleBtn = page.getByTestId("mode-toggle-btn");
+    const modeToggleBtn = page.getByTestId("auth-mode-btn");
     await expect(modeToggleBtn).toBeVisible();
-    await expect(modeToggleBtn.locator("text=OBSERVER MODE")).toBeVisible();
+    await expect(modeToggleBtn.locator("text=/Observer Mode/i")).toBeVisible();
     await expect(page.locator("text=/Tasks Locked/i")).toBeVisible();
 
     // 2. Observer Mode: Modifying task is rejected
@@ -76,9 +79,10 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     // 3. Authenticate Commander via Google Identity test hook
     await authenticateCommander(page);
 
-    // 4. Assert Commander Mode is now ACTIVE in the bottom dock
-    await expect(modeToggleBtn).toBeVisible();
-    await expect(modeToggleBtn.locator("text=ACTIVE")).toBeVisible();
+    // 4. Assert Commander Mode is now visible in the bottom dock unified pill
+    const commanderPill = page.getByTestId("drive-synced-widget");
+    await expect(commanderPill).toBeVisible();
+    await expect(commanderPill.locator("text=/Commander/i")).toBeVisible();
 
     // 5. Assert Header HUD label changes from "Tasks Locked" to "Tasks Completed"
     await expect(page.locator("text=/Tasks Completed/i")).toBeVisible();
@@ -88,9 +92,11 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     await expect(firstTask.locator("svg.lucide-check")).toBeVisible();
     await expect(page.locator("text=/1 \\/ 132/")).toBeVisible();
 
-    // 7. Revoke Commander access via button click
-    await modeToggleBtn.click();
-    await expect(page.locator("text=OBSERVER MODE")).toBeVisible();
+    // 7. Revoke Commander access via logout/disconnect button click
+    const disconnectBtn = page.getByTestId("drive-disconnect-btn");
+    await disconnectBtn.click();
+    await expect(page.getByTestId("auth-mode-btn")).toBeVisible();
+    await expect(page.getByTestId("auth-mode-btn").locator("text=/Observer Mode/i")).toBeVisible();
     await expect(page.locator("text=/Tasks Locked/i")).toBeVisible();
   });
 
@@ -313,14 +319,14 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 
-    // 1. Disconnected State: Connect Drive button exists in Header HUD
-    const driveBtn = page.getByTestId("drive-connect-btn");
+    // 1. Disconnected State: Connect Drive button exists in bottom dock
+    const driveBtn = page.getByTestId("auth-mode-btn");
     await expect(driveBtn).toBeVisible();
 
     // Click Connect Drive button -> triggers auth attempt and transitions status
     await driveBtn.click();
     await expect(
-      page.locator("text=/AUTHENTICATING|GOOGLE CLIENT ID NOT CONFIGURED|DRIVE SYNC FAILED/").first()
+      page.locator("text=/AUTHENTICATING|GOOGLE CLIENT ID NOT CONFIGURED|DRIVE SYNC FAILED/i").first()
     ).toBeVisible();
 
     // Intercept Google Drive API requests for mock manual sync
@@ -368,7 +374,7 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     // Assert Connected widget is now visible with static indicator
     const syncedWidget = page.getByTestId("drive-synced-widget");
     await expect(syncedWidget).toBeVisible();
-    await expect(page.locator("text=/DRIVE CONNECTED/")).toBeVisible();
+    await expect(syncedWidget.locator("text=/Observer/i")).toBeVisible();
 
     // Manual sync button exists
     const manualSyncBtn = page.getByTestId("drive-sync-manual-btn");
@@ -379,7 +385,6 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
 
     // Assert telemetry backup success toast appears
     await expect(page.locator("text=TELEMETRY BACKUP SYNCED TO DRIVE")).toBeVisible();
-    await expect(page.locator("text=/DRIVE CONNECTED/")).toBeVisible();
 
     // 3. Disconnect: Click disconnect button
     const disconnectBtn = page.getByTestId("drive-disconnect-btn");
@@ -388,8 +393,8 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     // Assert toast appears
     await expect(page.locator("text=DRIVE DISCONNECTED")).toBeVisible();
 
-    // Assert reverts to Connect Drive button
-    await expect(page.getByTestId("drive-connect-btn")).toBeVisible();
+    // Assert reverts to Auth Mode button
+    await expect(page.getByTestId("auth-mode-btn")).toBeVisible();
 
     // Verify zero unhandled exceptions
     expect(errorLogs).toEqual([]);
@@ -513,13 +518,11 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
 
     const downloadPromise = page.waitForEvent("download");
     await downloadBtn.click();
+    await expect(page.locator("text=CLEARANCE CREDENTIAL GENERATED")).toBeVisible();
     const download = await downloadPromise;
 
     // Verify downloaded filename format
     expect(download.suggestedFilename()).toMatch(/devops-clearance-id.*\.png/);
-
-    // 5. Verify success toast notification
-    await expect(page.locator("text=CLEARANCE CREDENTIAL GENERATED")).toBeVisible();
 
     // 6. Close modal via close button
     const closeBtn = page.getByTestId("badge-modal-close-btn");
@@ -622,8 +625,8 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
       page.locator("text=/SESSION EXPIRED|SYNC FAILED|INVALID CREDENTIALS/i").first()
     ).toBeVisible();
 
-    // Assert Drive session is revoked and UI reverts to "CONNECT DRIVE" button
-    await expect(page.getByTestId("drive-connect-btn")).toBeVisible();
+    // Assert Drive session is revoked and UI reverts to "auth-mode-btn" button
+    await expect(page.getByTestId("auth-mode-btn")).toBeVisible();
     await expect(driveWidget).toHaveCount(0);
   });
 

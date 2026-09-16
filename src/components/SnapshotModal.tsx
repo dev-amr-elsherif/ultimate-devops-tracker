@@ -205,7 +205,7 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
               )}
             </div>
             <div className="text-[10px] font-mono text-slate-500 mt-1">
-              Supports TelemetrySnapshot v1.0 JSON payloads
+              Supports Full Telemetry Snapshot v2.1.0 & Legacy Payloads
             </div>
           </div>
 

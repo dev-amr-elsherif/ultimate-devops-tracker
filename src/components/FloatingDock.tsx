@@ -6,12 +6,12 @@ import {
   Volume2,
   VolumeX,
   Lock,
-  Unlock,
+  ShieldCheck,
   Cloud,
-  CloudOff,
-  RefreshCw,
+  Loader2,
+  LogOut,
   CreditCard,
-  Upload,
+  Database,
 } from "lucide-react";
 import { soundFx } from "@/lib/audio";
 
@@ -49,99 +49,153 @@ export const FloatingDock: React.FC = () => {
             soundFx.playBlip(900);
             setIsBadgeModalOpen(true);
           }}
-          className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl hover:bg-cyan-950/50 text-cyan-300 hover:text-cyan-200 transition-all font-mono text-xs font-semibold focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none whitespace-nowrap shrink-0"
+          className="flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 rounded-xl hover:bg-cyan-950/50 text-cyan-300 hover:text-cyan-200 transition-all font-mono text-xs font-semibold focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none whitespace-nowrap shrink-0"
           title="Generate Holographic Clearance ID Badge"
         >
           <CreditCard className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-          <span className="hidden sm:inline tracking-wider">[ 🪪 ID CLEARANCE ]</span>
-          <span className="sm:hidden tracking-wider text-[11px]">[ 🪪 ID ]</span>
+          <span className="hidden sm:inline tracking-wider">ID Clearance</span>
+          <span className="sm:hidden tracking-wider text-[11px]">ID</span>
         </button>
 
-        {/* 2. Google Drive & Identity Sync */}
-        {safeDriveStatus === "disconnected" && (
-          <button
-            data-testid="drive-connect-btn"
-            aria-label="Connect Google Drive for cloud telemetry sync"
-            onClick={connectDrive}
-            className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl hover:bg-cyan-950/50 text-slate-300 hover:text-cyan-300 transition-all font-mono text-xs font-semibold focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none whitespace-nowrap shrink-0"
-            title="Connect Google Drive to enable cloud telemetry sync (appDataFolder)"
-          >
-            <Cloud className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="hidden sm:inline tracking-wider">[ ☁️ CONNECT DRIVE ]</span>
-            <span className="sm:hidden tracking-wider text-[11px]">[ ☁️ DRIVE ]</span>
-          </button>
-        )}
-
-        {safeDriveStatus === "connecting" && (
-          <div
-            data-testid="drive-syncing-indicator"
-            aria-label="Connecting to Google Drive"
-            className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-cyan-300 font-mono text-xs animate-pulse whitespace-nowrap shrink-0"
-            title="Connecting to Google Drive..."
-          >
-            <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400 shrink-0" />
-            <span className="hidden sm:inline tracking-wider">[ ☁️ AUTHENTICATING... ]</span>
-            <span className="sm:hidden tracking-wider text-[11px]">[ ☁️ AUTH... ]</span>
-          </div>
-        )}
-
-        {(safeDriveStatus === "synced" || safeDriveStatus === "syncing") && (
+        {/* 2. Unified Identity & Drive Sync Pill */}
+        {safeIsCommander ? (
+          /* State B: Authenticated Commander */
           <div
             data-testid="drive-synced-widget"
-            className="flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-xl font-mono text-xs text-emerald-300 bg-emerald-950/20 border border-emerald-500/30 whitespace-nowrap shrink-0"
+            className="flex items-center gap-1 sm:gap-1.5 px-2.5 py-1 rounded-xl font-mono text-xs text-emerald-300 bg-emerald-950/40 border border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.15)] whitespace-nowrap shrink-0 transition-all"
+          >
+            {driveUser?.picture ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={driveUser.picture}
+                alt={driveUser.name || "Commander"}
+                className="w-5 h-5 rounded-full border border-emerald-400/80 shrink-0"
+              />
+            ) : (
+              <div className="w-5 h-5 rounded-full bg-emerald-900/80 border border-emerald-400/80 flex items-center justify-center shrink-0 text-[10px] font-bold text-emerald-200">
+                {driveUser?.name ? driveUser.name.charAt(0).toUpperCase() : "C"}
+              </div>
+            )}
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <button
+              data-testid="drive-sync-manual-btn"
+              onClick={syncDriveManual}
+              disabled={safeDriveStatus === "syncing"}
+              aria-label="Synchronize telemetry with Google Drive"
+              className={`flex items-center gap-1 px-1 py-0.5 rounded transition-colors focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none ${
+                safeDriveStatus === "syncing"
+                  ? "text-cyan-300 cursor-wait"
+                  : "text-emerald-300 hover:text-emerald-100"
+              }`}
+              title={
+                safeDriveStatus === "syncing"
+                  ? "Synchronizing telemetry with Google Drive..."
+                  : `Commander Active${driveUser?.email ? ` (${driveUser.email})` : ""}${
+                      driveLastSyncedAt ? ` • Last backup: ${driveLastSyncedAt}` : ""
+                    }. Click to backup telemetry to Drive.`
+              }
+            >
+              <span className="font-bold tracking-wider text-emerald-200 text-xs hidden sm:inline">
+                Commander
+              </span>
+              <span className="font-bold tracking-wider text-emerald-200 text-[11px] sm:hidden">
+                Cmdr
+              </span>
+              {safeDriveStatus === "syncing" ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400 shrink-0 ml-0.5" />
+              ) : (
+                <Cloud className="w-3.5 h-3.5 text-emerald-400 hover:text-cyan-300 shrink-0 ml-0.5" />
+              )}
+            </button>
+            <button
+              data-testid="drive-disconnect-btn"
+              onClick={revokeCommander}
+              aria-label="Disconnect session and revert to Observer Mode"
+              className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 transition-colors focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:outline-none"
+              title="Disconnect session and revert to Observer Mode"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : safeDriveStatus === "synced" || safeDriveStatus === "syncing" || driveUser ? (
+          /* State C: Authenticated Non-Commander (Guest Google Account) */
+          <div
+            data-testid="drive-synced-widget"
+            className="flex items-center gap-1 sm:gap-1.5 px-2.5 py-1 rounded-xl font-mono text-xs text-slate-300 bg-slate-900/70 border border-cyan-500/30 whitespace-nowrap shrink-0 transition-all"
           >
             {driveUser?.picture ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={driveUser.picture}
                 alt={driveUser.name || "User"}
-                className="w-4 h-4 rounded-full border border-emerald-400/60 mr-0.5"
+                className="w-5 h-5 rounded-full border border-cyan-400/60 shrink-0"
               />
             ) : (
-              <Cloud className="w-3.5 h-3.5 text-emerald-400 mr-0.5 shrink-0" />
+              <div className="w-5 h-5 rounded-full bg-slate-800 border border-cyan-400/60 flex items-center justify-center shrink-0 text-[10px] font-bold text-cyan-300">
+                {driveUser?.name ? driveUser.name.charAt(0).toUpperCase() : "O"}
+              </div>
             )}
             <button
               data-testid="drive-sync-manual-btn"
-              aria-label="Synchronize telemetry with Google Drive"
               onClick={syncDriveManual}
               disabled={safeDriveStatus === "syncing"}
-              className={`flex items-center gap-1 px-1 sm:px-1.5 py-0.5 transition-colors focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none whitespace-nowrap ${
+              aria-label="Synchronize telemetry with Google Drive"
+              className={`flex items-center gap-1 px-1 py-0.5 rounded transition-colors focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none ${
                 safeDriveStatus === "syncing"
                   ? "text-cyan-300 cursor-wait"
-                  : "text-emerald-300 hover:text-cyan-200"
+                  : "text-slate-300 hover:text-cyan-200"
               }`}
               title={
                 safeDriveStatus === "syncing"
                   ? "Synchronizing telemetry with Google Drive..."
                   : `Drive Connected${driveUser?.email ? ` (${driveUser.email})` : ""}${
                       driveLastSyncedAt ? ` • Last backup: ${driveLastSyncedAt}` : ""
-                    }. Click to backup telemetry.`
+                    }. Click to backup telemetry to Drive.`
               }
             >
+              <span className="font-semibold tracking-wider text-slate-300 text-xs">
+                Observer
+              </span>
               {safeDriveStatus === "syncing" ? (
-                <>
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400 shrink-0" />
-                  <span className="hidden sm:inline font-semibold tracking-wider">[ ☁️ SYNCING... ]</span>
-                  <span className="sm:hidden font-semibold tracking-wider text-[11px]">[ SYNC... ]</span>
-                </>
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400 shrink-0 ml-0.5" />
               ) : (
-                <>
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-                  <span className="hidden sm:inline font-semibold tracking-wider">[ ☁️ DRIVE CONNECTED ]</span>
-                  <span className="sm:hidden font-semibold tracking-wider text-[11px]">[ CONNECTED ]</span>
-                </>
+                <Cloud className="w-3.5 h-3.5 text-cyan-400 hover:text-cyan-200 shrink-0 ml-0.5" />
               )}
             </button>
             <button
               data-testid="drive-disconnect-btn"
               onClick={disconnectDriveSession}
-              className="p-1 rounded text-slate-400 hover:text-rose-400 transition-colors ml-0.5 focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:outline-none"
-              title="Disconnect Google Drive"
               aria-label="Disconnect Google Drive"
+              className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 transition-colors focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:outline-none"
+              title="Disconnect Google Drive"
             >
-              <CloudOff className="w-3.5 h-3.5" />
+              <LogOut className="w-3.5 h-3.5" />
             </button>
           </div>
+        ) : safeDriveStatus === "connecting" ? (
+          /* State A (Connecting): Authenticating */
+          <div
+            data-testid="drive-syncing-indicator"
+            aria-label="Connecting to Google Drive"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-cyan-300 font-mono text-xs animate-pulse whitespace-nowrap shrink-0"
+            title="Connecting to Google Drive..."
+          >
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400 shrink-0" />
+            <span className="hidden sm:inline tracking-wider">AUTHENTICATING...</span>
+            <span className="sm:hidden tracking-wider text-[11px]">AUTH...</span>
+          </div>
+        ) : (
+          /* State A: Logged Out / Observer (Default) */
+          <button
+            data-testid="auth-mode-btn"
+            aria-label="Observer Mode. Click to sign in with Google."
+            onClick={connectDrive}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl hover:bg-cyan-950/40 text-cyan-400 hover:text-cyan-200 transition-all font-mono text-xs font-semibold focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none whitespace-nowrap shrink-0"
+            title="Observer Mode. Click to sign in with Google."
+          >
+            <Lock className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+            <span className="tracking-wider text-[11px] sm:text-xs">Observer Mode</span>
+          </button>
         )}
 
         {/* 3. Snapshot Ingest Button */}
@@ -152,52 +206,15 @@ export const FloatingDock: React.FC = () => {
             soundFx.playBlip(750);
             setIsSnapshotModalOpen(true);
           }}
-          className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl hover:bg-cyan-950/50 text-slate-300 hover:text-cyan-300 transition-all font-mono text-xs font-semibold focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none whitespace-nowrap shrink-0"
+          className="flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 rounded-xl hover:bg-cyan-950/50 text-slate-300 hover:text-cyan-300 transition-all font-mono text-xs font-semibold focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none whitespace-nowrap shrink-0"
           title="Ingest / Import JSON Telemetry Snapshot"
         >
-          <Upload className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-          <span className="hidden sm:inline tracking-wider">[ 💾 SNAPSHOT ]</span>
-          <span className="sm:hidden tracking-wider text-[11px]">[ 💾 ]</span>
+          <Database className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+          <span className="hidden sm:inline tracking-wider">Snapshot</span>
+          <span className="sm:hidden tracking-wider text-[11px]">Snapshot</span>
         </button>
 
-        {/* 4. Security Clearance Lock / Indicator */}
-        {safeIsCommander ? (
-          <button
-            data-testid="mode-toggle-btn"
-            onClick={revokeCommander}
-            aria-label="Commander Mode Active. Click to revoke clearance."
-            className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/50 hover:text-emerald-100 transition-all font-mono text-xs font-bold border border-emerald-500/30 focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none whitespace-nowrap shrink-0"
-            title="Click to revoke Commander access and return to Observer Mode"
-          >
-            <Unlock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span className="hidden sm:inline tracking-wider">[ 🔓 COMMANDER</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-200">
-              ACTIVE
-            </span>
-            <span className="hidden sm:inline">]</span>
-          </button>
-        ) : (
-          <button
-            data-testid="mode-toggle-btn"
-            onClick={connectDrive}
-            aria-label="Observer Mode. Click to authenticate Commander via Google Identity."
-            className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl hover:bg-cyan-950/40 text-cyan-400 hover:text-cyan-200 transition-all font-mono text-xs font-semibold focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none whitespace-nowrap shrink-0"
-            title="Click to authenticate as Commander with authorized Google account"
-          >
-            <Lock className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-            <span className="tracking-wider text-[11px] sm:text-xs">
-              <span className="hidden sm:inline">[ 🔒 </span>
-              <span>OBSERVER MODE</span>
-              <span className="hidden sm:inline"></span>
-            </span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-400 hidden sm:inline">
-              UNLOCK
-            </span>
-            <span className="hidden sm:inline">]</span>
-          </button>
-        )}
-
-        {/* 5. Audio Mute Toggle */}
+        {/* 4. Audio Mute Toggle */}
         <button
           onClick={() => {
             toggleAudioMute();
@@ -208,7 +225,11 @@ export const FloatingDock: React.FC = () => {
               ? "text-slate-400 hover:text-slate-200"
               : "text-cyan-300 hover:text-cyan-100 hover:bg-cyan-950/40"
           }`}
-          title={isAudioMuted ? "Audio Synthesizer Muted (Click to Unmute)" : "Audio Synthesizer Active (Click to Mute)"}
+          title={
+            isAudioMuted
+              ? "Audio Synthesizer Muted (Click to Unmute)"
+              : "Audio Synthesizer Active (Click to Mute)"
+          }
           aria-label="Toggle Sound"
         >
           {isAudioMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
