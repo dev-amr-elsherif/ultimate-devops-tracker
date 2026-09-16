@@ -3,21 +3,6 @@ import { ROADMAP_PHASES } from "@/data/roadmapData";
 export interface FullRoadmapArchive {
   schemaVersion: "3.0.0";
   exportedAt: string;
-  engine: "Ultimate DevOps Tracker Pro";
-  engineer: {
-    name: string;
-    email: string;
-    role: "commander" | "observer";
-    clearanceRank: string;
-    avatarUrl: string | null;
-  };
-  summaryTelemetry: {
-    completionPercentage: number;
-    completedTasksCount: number;
-    totalTasksCount: number; // 132
-    verifiedMilestonesCount: number;
-    totalMilestonesCount: number; // 13
-  };
   phases: Array<{
     phaseId: string;
     phaseNumber: number;
@@ -59,39 +44,10 @@ export function generateCompleteArchive(params: {
   completedMilestoneIds: Set<string>;
   taskDetails: Record<string, any>;
   artifacts: Record<string, any>;
-  userEmail?: string;
-  isCommander: boolean;
-  avatarUrl: string | null;
-  completionPercentage: number;
 }): FullRoadmapArchive {
-  const allTasksCount = ROADMAP_PHASES.reduce((acc, p) => {
-    const tasks = (p as any).tasks || p.modules?.flatMap((m: any) => m.tasks) || [];
-    return acc + tasks.length;
-  }, 0);
-
-  const allMilestonesCount = ROADMAP_PHASES.reduce((acc, p) => {
-    const ms = (p as any).milestones || ((p as any).milestone ? [(p as any).milestone] : []);
-    return acc + ms.length;
-  }, 0);
-
   return {
     schemaVersion: "3.0.0",
     exportedAt: new Date().toISOString(),
-    engine: "Ultimate DevOps Tracker Pro",
-    engineer: {
-      name: "Amr Fathy Elsherif",
-      email: params.userEmail || "amrelsherif.swe@gmail.com",
-      role: params.isCommander ? "commander" : "observer",
-      clearanceRank: params.completionPercentage === 100 ? "Principal Architect" : "Systems Specialist",
-      avatarUrl: params.avatarUrl,
-    },
-    summaryTelemetry: {
-      completionPercentage: params.completionPercentage,
-      completedTasksCount: params.completedTaskIds.size,
-      totalTasksCount: allTasksCount || 132,
-      verifiedMilestonesCount: params.completedMilestoneIds.size,
-      totalMilestonesCount: allMilestonesCount || 13,
-    },
     phases: ROADMAP_PHASES.map((phase) => {
       const tasksList = (phase as any).tasks || phase.modules?.flatMap((m: any) => m.tasks) || [];
       const phaseTasks = tasksList.map((task: any) => {
@@ -220,12 +176,14 @@ export function parseRoadmapPayload(raw: unknown): ParsedRoadmapPayload {
   if (Array.isArray(data.phases)) {
     const extractedTaskIds: string[] = [];
     const extractedMilestoneIds: string[] = [];
+    let totalScannedTasks = 0;
 
     data.phases.forEach((phase: any) => {
       if (phase && typeof phase === "object") {
         if (Array.isArray(phase.tasks)) {
           phase.tasks.forEach((task: any) => {
             if (task && typeof task === "object") {
+              totalScannedTasks++;
               const taskId = typeof task.taskId === "string" ? task.taskId : String(task.id || "");
               if (taskId) {
                 if (task.isCompleted === true) {
@@ -259,6 +217,19 @@ export function parseRoadmapPayload(raw: unknown): ParsedRoadmapPayload {
 
     taskIds = extractedTaskIds;
     milestoneIds = extractedMilestoneIds;
+
+    if (totalScannedTasks > 0) {
+      completionPercentage = Math.round((extractedTaskIds.length / totalScannedTasks) * 100);
+    }
+    if (completionPercentage >= 75) {
+      clearanceRank = "DevOps Lead";
+    } else if (completionPercentage >= 50) {
+      clearanceRank = "Cloud Architect";
+    } else if (completionPercentage >= 25) {
+      clearanceRank = "SysAdmin";
+    } else {
+      clearanceRank = "Cadet";
+    }
 
     if (data.engineer && typeof data.engineer === "object") {
       if (typeof data.engineer.avatarUrl === "string" && data.engineer.avatarUrl.trim()) {

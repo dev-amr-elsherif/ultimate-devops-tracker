@@ -301,12 +301,14 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
       console.log("schemaVersion:", json.schemaVersion);
       console.log("Phases count:", json.phases?.length);
       console.log("Total tasks count:", totalExportedTasks);
-      console.log("Engineer name:", json.engineer?.name);
 
       expect(json.schemaVersion).toBe("3.0.0");
       expect(json.phases).toHaveLength(12);
       expect(totalExportedTasks).toBe(132);
-      expect(json.engineer.name).toBe("Amr Fathy Elsherif");
+      expect(json.engineer).toBeUndefined();
+      expect(json.summaryTelemetry).toBeUndefined();
+      expect(json.engine).toBeUndefined();
+      expect(json.metadata).toBeUndefined();
 
       // Verify task fields schema compliance
       for (const phase of json.phases) {

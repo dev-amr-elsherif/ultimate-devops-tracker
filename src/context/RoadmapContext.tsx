@@ -578,10 +578,6 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
       completedMilestoneIds,
       taskDetails,
       artifacts: projectArtifacts,
-      userEmail: driveUser?.email,
-      isCommander,
-      avatarUrl: customAvatarUrl,
-      completionPercentage,
     });
     downloadArchiveFile(archive);
     addToast({
@@ -593,10 +589,6 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     completedTaskIds,
     completedMilestoneIds,
     projectArtifacts,
-    driveUser?.email,
-    isCommander,
-    customAvatarUrl,
-    completionPercentage,
     addToast,
   ]);
 
@@ -782,10 +774,6 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
           completedMilestoneIds,
           taskDetails: {},
           artifacts: projectArtifacts,
-          userEmail: driveUser?.email,
-          isCommander,
-          avatarUrl: customAvatarUrl,
-          completionPercentage,
         });
         await pushToDrive(accessToken, archive);
         addToast({
@@ -892,10 +880,6 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         completedMilestoneIds: milestonesToPush,
         taskDetails: {},
         artifacts: artifactsToPush,
-        userEmail: driveUser?.email,
-        isCommander,
-        avatarUrl: customAvatarUrl,
-        completionPercentage: totalTasks > 0 ? Math.round((tasksToPush.size / totalTasks) * 100) : 0,
       });
 
       await pushToDrive(token, archive);
