@@ -4,15 +4,9 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useRoadmap } from "@/context/RoadmapContext";
 import { X, Download, ShieldCheck, RefreshCw, Camera } from "lucide-react";
 import { soundFx } from "@/lib/audio";
-import QRCode from "qrcode";
+import { renderClearanceBadgeCanvas } from "@/lib/canvasId";
 
 const ENGINEER_NAME = "Amr Fathy Elsherif";
-
-function getTierLabel(level: number): string {
-  if (level >= 3) return "TIER 3: PRINCIPAL ARCHITECT";
-  if (level >= 2) return "TIER 2: INFRASTRUCTURE ENGINEER";
-  return "TIER 1: SYSTEMS SPECIALIST";
-}
 
 export const ClearanceBadgeModal: React.FC = () => {
   const {
@@ -22,9 +16,8 @@ export const ClearanceBadgeModal: React.FC = () => {
     completedTasksCount,
     totalTasks,
     totalMilestones,
-    operationalPhasesCount,
+    completedMilestonesCount,
     clearanceRank,
-    projectArtifacts,
     addToast,
     isCommander,
     customAvatarUrl,
@@ -35,10 +28,6 @@ export const ClearanceBadgeModal: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [avatarHover, setAvatarHover] = useState(false);
-
-  const verifiedArtifactsCount = Object.values(projectArtifacts).filter(
-    (a) => a.repoUrl?.trim() || a.liveUrl?.trim()
-  ).length;
 
   const cleanupCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -55,7 +44,9 @@ export const ClearanceBadgeModal: React.FC = () => {
   }, [cleanupCanvas, setIsBadgeModalOpen]);
 
   useEffect(() => {
-    return () => { cleanupCanvas(); };
+    return () => {
+      cleanupCanvas();
+    };
   }, [cleanupCanvas]);
 
   useEffect(() => {
@@ -66,371 +57,39 @@ export const ClearanceBadgeModal: React.FC = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isBadgeModalOpen, closeDialog]);
 
-  const drawRoundRect = (
-    ctx: CanvasRenderingContext2D,
-    x: number, y: number, w: number, h: number, r: number
-  ) => {
-    ctx.beginPath();
-    if (ctx.roundRect) {
-      ctx.roundRect(x, y, w, h, r);
-    } else {
-      ctx.moveTo(x + r, y);
-      ctx.lineTo(x + w - r, y);
-      ctx.arcTo(x + w, y, x + w, y + r, r);
-      ctx.lineTo(x + w, y + h - r);
-      ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
-      ctx.lineTo(x + r, y + h);
-      ctx.arcTo(x, y + h, x, y + h - r, r);
-      ctx.lineTo(x, y + r);
-      ctx.arcTo(x, y, x + r, y, r);
-      ctx.closePath();
-    }
-  };
-
   const renderBadge = useCallback(async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
 
     setIsGenerating(true);
 
-    const WIDTH = 1200;
-    const HEIGHT = 630;
-    canvas.width = WIDTH;
-    canvas.height = HEIGHT;
-
-    // 1. Background
-    const bgGradient = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
-    bgGradient.addColorStop(0, "#050814");
-    bgGradient.addColorStop(0.5, "#0a0f24");
-    bgGradient.addColorStop(1, "#040711");
-    ctx.fillStyle = bgGradient;
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-
-    const radialGlow = ctx.createRadialGradient(200, 315, 30, 200, 315, 450);
-    radialGlow.addColorStop(0, "rgba(0, 240, 255, 0.10)");
-    radialGlow.addColorStop(0.5, "rgba(0, 255, 157, 0.04)");
-    radialGlow.addColorStop(1, "transparent");
-    ctx.fillStyle = radialGlow;
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-
-    // 2. Grid
-    ctx.strokeStyle = "rgba(0, 240, 255, 0.04)";
-    ctx.lineWidth = 1;
-    const GRID_STEP = 30;
-    for (let x = 0; x < WIDTH; x += GRID_STEP) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, HEIGHT); ctx.stroke();
-    }
-    for (let y = 0; y < HEIGHT; y += GRID_STEP) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WIDTH, y); ctx.stroke();
-    }
-
-    // 3. CRT Scanlines
-    ctx.fillStyle = "rgba(0, 0, 0, 0.12)";
-    for (let y = 0; y < HEIGHT; y += 4) ctx.fillRect(0, y, WIDTH, 1.5);
-
-    // 4. Sleek Minimalist Outer Border (24px outer margin, #0891b2 with 25% opacity)
-    ctx.strokeStyle = "rgba(8, 145, 178, 0.25)";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(24, 24, WIDTH - 48, HEIGHT - 48);
-
-    // 5. Header & Identity Zone (Y: 45 to 195 - Height: 150px)
-    // 5A. Circular Avatar (diameter: 110px, Y: 55 to 165, radius: 55px)
-    const avatarCX = 110;
-    const avatarCY = 110;
-    const avatarR = 55;
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(avatarCX, avatarCY, avatarR + 5, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(0, 240, 255, 0.25)";
-    ctx.lineWidth = 2;
-    ctx.shadowColor = "rgba(0, 240, 255, 0.4)";
-    ctx.shadowBlur = 10;
-    ctx.stroke();
-    ctx.restore();
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(avatarCX, avatarCY, avatarR + 2, 0, Math.PI * 2);
-    ctx.strokeStyle = "#00f0ff";
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    ctx.restore();
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(avatarCX, avatarCY, avatarR, 0, Math.PI * 2);
-    ctx.clip();
-
-    if (customAvatarUrl) {
-      try {
-        const img = new Image();
-        img.src = customAvatarUrl;
-        await new Promise<void>((resolve, reject) => {
-          img.onload = () => resolve();
-          img.onerror = () => reject();
-          setTimeout(() => reject(), 3000);
-        });
-
-        // Center-crop square based on image aspect ratio (object-fit: cover)
-        const cropSize = Math.min(img.width, img.height);
-        const sx = (img.width - cropSize) / 2;
-        const sy = (img.height - cropSize) / 2;
-        ctx.drawImage(
-          img,
-          sx,
-          sy,
-          cropSize,
-          cropSize,
-          avatarCX - avatarR,
-          avatarCY - avatarR,
-          avatarR * 2,
-          avatarR * 2
-        );
-      } catch {
-        ctx.fillStyle = "rgba(10, 16, 36, 1)";
-        ctx.fillRect(avatarCX - avatarR, avatarCY - avatarR, avatarR * 2, avatarR * 2);
-        ctx.font = "bold 32px 'Courier New', monospace";
-        ctx.fillStyle = "#ffffff";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("AFE", avatarCX, avatarCY + 1);
-        ctx.textAlign = "left";
-        ctx.textBaseline = "alphabetic";
-      }
-    } else {
-      ctx.fillStyle = "rgba(10, 16, 36, 1)";
-      ctx.fillRect(avatarCX - avatarR, avatarCY - avatarR, avatarR * 2, avatarR * 2);
-      ctx.font = "bold 32px 'Courier New', monospace";
-      ctx.fillStyle = "#ffffff";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("AFE", avatarCX, avatarCY + 1);
-      ctx.textAlign = "left";
-      ctx.textBaseline = "alphabetic";
-    }
-    ctx.restore();
-
-    // 5B. Identity Block (Name, Title, Tier Badge)
-    const idX = 195;
-
-    ctx.font = "bold 28px 'Courier New', monospace";
-    ctx.fillStyle = "#f8fafc";
-    ctx.fillText(ENGINEER_NAME, idX, 90);
-
-    ctx.font = "14px 'Courier New', monospace";
-    ctx.fillStyle = "#94a3b8";
-    ctx.fillText("DevOps & Cloud Systems Architect", idX, 116);
-
-    const tierLabel = getTierLabel(clearanceRank.level);
-    ctx.fillStyle = "rgba(0, 240, 255, 0.10)";
-    ctx.strokeStyle = "rgba(0, 240, 255, 0.4)";
-    ctx.lineWidth = 1;
-    drawRoundRect(ctx, idX, 134, 280, 26, 4);
-    ctx.fill();
-    ctx.stroke();
-    ctx.font = "bold 11px 'Courier New', monospace";
-    ctx.fillStyle = "#00f0ff";
-    ctx.fillText(tierLabel, idX + 12, 151);
-
-    // 5C. Top-Right QR Code Card (X: 1055, Y: 55, Size: 100x100, 45px right margin)
-    const qrX = 1055;
-    const qrY = 55;
-
-    ctx.save();
-    ctx.fillStyle = "rgba(10, 16, 32, 0.85)";
-    ctx.strokeStyle = "#0891b2";
-    ctx.lineWidth = 1;
-    ctx.shadowColor = "rgba(8, 145, 178, 0.35)";
-    ctx.shadowBlur = 8;
-    drawRoundRect(ctx, qrX - 5, qrY - 5, 110, 110, 6);
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-
     try {
-      const liveOrigin =
-        typeof window !== "undefined" && window.location.origin
-          ? window.location.origin
-          : "https://dev-amr-elsherif.github.io/ultimate-devops-tracker";
-
-      const qrDataUrl = await QRCode.toDataURL(liveOrigin, {
-        margin: 1,
-        width: 100,
-        color: { dark: "#00f0ff", light: "#050814" },
+      await renderClearanceBadgeCanvas(canvas, {
+        engineerName: ENGINEER_NAME,
+        globalProgress: completionPercentage,
+        completedItems: completedTasksCount,
+        totalItems: totalTasks,
+        verifiedArtifacts: completedMilestonesCount,
+        customAvatarUrl,
       });
-
-      const qrImg = new Image();
-      qrImg.src = qrDataUrl;
-      await new Promise<void>((resolve) => {
-        qrImg.onload = () => resolve();
-      });
-
-      ctx.drawImage(qrImg, qrX, qrY, 100, 100);
-
-      // Monospace label centered underneath QR
-      ctx.font = "bold 9px 'Courier New', monospace";
-      ctx.fillStyle = "#22d3ee";
-      ctx.textAlign = "center";
-      ctx.fillText("SCAN TO VERIFY LIVE", qrX + 50, qrY + 122);
-      ctx.textAlign = "left";
-    } catch {
-      // Fallback if QR fails
+    } catch (err) {
+      console.error("Failed to render canvas badge:", err);
+    } finally {
+      setIsGenerating(false);
     }
-
-    // [Vertical Air Gap 1: Y: 195 to 230 - 35px empty space]
-
-    // 6. Core Metrics Zone (Y: 230 to 410 - Height: 180px)
-    const pillars = [
-      {
-        label: "PROGRESS",
-        value: `${completionPercentage}%`,
-        sub: `${operationalPhasesCount} / 12 Phases Defended`,
-        color: "#00f0ff",
-        glow: "rgba(0, 240, 255, 0.18)",
-      },
-      {
-        label: "CORE TASKS",
-        value: `${completedTasksCount} / ${totalTasks}`,
-        sub: "CLI & Config Protocols",
-        color: "#38bdf8",
-        glow: "rgba(56, 189, 248, 0.18)",
-      },
-      {
-        label: "VERIFIED ARTIFACTS",
-        value: `${verifiedArtifactsCount} / ${totalMilestones}`,
-        sub: "GitHub Repos & Live Demos",
-        color: "#00ff9d",
-        glow: "rgba(0, 255, 157, 0.18)",
-      },
-    ];
-
-    const pillarStartX = 55;
-    const pillarStartY = 230;
-    const pillarW = 345;
-    const pillarH = 180;
-    const pillarGap = 35;
-
-    for (let idx = 0; idx < pillars.length; idx++) {
-      const p = pillars[idx];
-      const cx = pillarStartX + idx * (pillarW + pillarGap);
-      const cy = pillarStartY;
-
-      ctx.fillStyle = "rgba(10, 16, 32, 0.78)";
-      ctx.strokeStyle = "rgba(30, 41, 59, 0.9)";
-      ctx.lineWidth = 1;
-      drawRoundRect(ctx, cx, cy, pillarW, pillarH, 8);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.strokeStyle = p.color;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(cx + 10, cy);
-      ctx.lineTo(cx + 85, cy);
-      ctx.stroke();
-
-      // Label with generous top padding
-      ctx.font = "bold 11px 'Courier New', monospace";
-      ctx.fillStyle = "rgba(148, 163, 184, 0.9)";
-      ctx.fillText(p.label, cx + 18, cy + 38);
-
-      // Value with generous vertical breathing room
-      ctx.save();
-      ctx.font = "bold 40px 'Courier New', monospace";
-      ctx.fillStyle = p.color;
-      ctx.shadowColor = p.glow;
-      ctx.shadowBlur = 10;
-      ctx.fillText(p.value, cx + 18, cy + 96);
-      ctx.restore();
-
-      // Subtitle with generous bottom padding
-      ctx.font = "bold 12px 'Courier New', monospace";
-      ctx.fillStyle = "rgba(226, 232, 240, 0.95)";
-      ctx.fillText(p.sub, cx + 18, cy + 144);
-    }
-
-    // [Vertical Air Gap 2: Y: 410 to 445 - 35px empty space]
-
-    // 7. Footer Metadata Zone (Y: 445 to 575 - Height: 130px, Streamlined & Centered)
-    const bottomY = 445;
-    const bottomH = 130;
-
-    ctx.fillStyle = "rgba(8, 13, 27, 0.6)";
-    ctx.strokeStyle = "rgba(30, 41, 59, 0.8)";
-    ctx.lineWidth = 1;
-    drawRoundRect(ctx, 45, bottomY, WIDTH - 90, bottomH, 8);
-    ctx.fill();
-    ctx.stroke();
-
-    // Subtle top divider line
-    ctx.strokeStyle = "#1e293b";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(55, bottomY);
-    ctx.lineTo(WIDTH - 55, bottomY);
-    ctx.stroke();
-
-    // Subtle vertical divider lines between columns
-    [325, 615, 895].forEach((divX) => {
-      ctx.beginPath();
-      ctx.moveTo(divX, bottomY + 25);
-      ctx.lineTo(divX, bottomY + bottomH - 25);
-      ctx.stroke();
-    });
-
-    const now = new Date();
-    const issuedDateStr = `${now.toISOString().slice(0, 10)} UTC`;
-
-    // Column 1: Credential ID (X: 70)
-    ctx.font = "10px 'Courier New', monospace";
-    ctx.fillStyle = "#64748b";
-    ctx.fillText("CREDENTIAL ID", 70, bottomY + 48);
-    ctx.font = "bold 13px 'Courier New', monospace";
-    ctx.fillStyle = "#f8fafc";
-    ctx.fillText("DEV-AFE-2026", 70, bottomY + 80);
-
-    // Column 2: Issued Date (X: 350)
-    ctx.font = "10px 'Courier New', monospace";
-    ctx.fillStyle = "#64748b";
-    ctx.fillText("ISSUED DATE", 350, bottomY + 48);
-    ctx.font = "bold 13px 'Courier New', monospace";
-    ctx.fillStyle = "#cbd5e1";
-    ctx.fillText(issuedDateStr, 350, bottomY + 80);
-
-    // Column 3: Security Signature (X: 635)
-    ctx.font = "10px 'Courier New', monospace";
-    ctx.fillStyle = "#64748b";
-    ctx.fillText("SECURITY SIGNATURE", 635, bottomY + 48);
-    ctx.font = "bold 13px 'Courier New', monospace";
-    ctx.fillStyle = "#38bdf8";
-    ctx.fillText("SHA256: 7F4B-5253-C0DE", 635, bottomY + 80);
-
-    // Column 4: Verification Status (X: 915)
-    ctx.font = "10px 'Courier New', monospace";
-    ctx.fillStyle = "#64748b";
-    ctx.fillText("VERIFICATION STATUS", 915, bottomY + 48);
-    ctx.font = "bold 13px 'Courier New', monospace";
-    ctx.fillStyle = "#34d399";
-    ctx.fillText("● CRYPTOGRAPHICALLY VERIFIED", 915, bottomY + 80);
-
-    setIsGenerating(false);
   }, [
     completionPercentage,
     completedTasksCount,
     totalTasks,
-    totalMilestones,
-    clearanceRank,
-    operationalPhasesCount,
-    verifiedArtifactsCount,
+    completedMilestonesCount,
     customAvatarUrl,
   ]);
 
   useEffect(() => {
     if (isBadgeModalOpen) {
-      const timer = setTimeout(() => { renderBadge(); }, 50);
+      const timer = setTimeout(() => {
+        renderBadge();
+      }, 50);
       return () => clearTimeout(timer);
     }
   }, [isBadgeModalOpen, renderBadge]);
@@ -538,7 +197,7 @@ export const ClearanceBadgeModal: React.FC = () => {
         <div className="p-4 sm:p-6 space-y-4">
           <p className="text-xs font-mono text-slate-400 leading-relaxed">
             Generate and export your official cyber-themed credential badge showcasing live
-            curriculum progress, completed tasks, defended milestones, and verified proof-of-work
+            curriculum progress, completed topics, defended milestones, and verified proof-of-work
             artifacts. Formatted for LinkedIn, X, and portfolio embeds.
           </p>
 
@@ -620,7 +279,7 @@ export const ClearanceBadgeModal: React.FC = () => {
             </div>
             <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800">
               <span className="text-[10px] text-slate-500 block uppercase">Verified Proof</span>
-              <span className="text-emerald-400 font-bold block">{verifiedArtifactsCount} Artifacts</span>
+              <span className="text-emerald-400 font-bold block">{completedMilestonesCount} / {totalMilestones} Verified</span>
             </div>
           </div>
         </div>

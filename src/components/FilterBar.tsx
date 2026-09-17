@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useRoadmap, FilterCategory } from "@/context/RoadmapContext";
-import { Search, Filter, Layers, Zap, Trophy, Upload } from "lucide-react";
+import { Search, Layers, Zap, ArrowRightLeft, Upload } from "lucide-react";
 import { soundFx } from "@/lib/audio";
 
 export const FilterBar: React.FC = () => {
@@ -29,7 +29,7 @@ export const FilterBar: React.FC = () => {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search commands, modules, tags (e.g. bash, docker, eks, iptables)..."
+            placeholder="Search topics, modules, tools (e.g. linux, terraform, k8s, promql, vault)..."
             className="w-full pl-10 pr-4 py-2 bg-slate-900/80 border border-slate-800 rounded-lg text-xs font-mono text-cyan-200 placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 focus:shadow-[0_0_12px_rgba(0,240,255,0.15)] transition-all"
           />
           {searchQuery && (
@@ -42,8 +42,12 @@ export const FilterBar: React.FC = () => {
           )}
         </div>
 
-        {/* Filter categories buttons */}
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Roadmap filter options">
+        {/* Filter Navigation: ALL TRACKS, SEQUENTIAL FOUNDATIONS, PARALLEL SPECIALIZATIONS */}
+        <div
+          className="flex flex-wrap items-center gap-2"
+          role="group"
+          aria-label="Roadmap filter options"
+        >
           <button
             onClick={() => handleFilterClick("all")}
             aria-pressed={activeFilter === "all"}
@@ -54,7 +58,7 @@ export const FilterBar: React.FC = () => {
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
-            ALL PHASES
+            ALL TRACKS
           </button>
 
           <button
@@ -66,8 +70,8 @@ export const FilterBar: React.FC = () => {
                 : "bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700"
             }`}
           >
-            <Filter className="w-3.5 h-3.5" />
-            SEQUENTIAL ONLY
+            <ArrowRightLeft className="w-3.5 h-3.5" />
+            SEQUENTIAL FOUNDATIONS
           </button>
 
           <button
@@ -80,20 +84,7 @@ export const FilterBar: React.FC = () => {
             }`}
           >
             <Zap className="w-3.5 h-3.5" />
-            PARALLEL TRACKS
-          </button>
-
-          <button
-            onClick={() => handleFilterClick("milestones")}
-            aria-pressed={activeFilter === "milestones"}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none ${
-              activeFilter === "milestones"
-                ? "bg-amber-500/20 border border-amber-400 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.2)] font-bold"
-                : "bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700"
-            }`}
-          >
-            <Trophy className="w-3.5 h-3.5" />
-            MILESTONES ONLY
+            PARALLEL SPECIALIZATIONS
           </button>
         </div>
 

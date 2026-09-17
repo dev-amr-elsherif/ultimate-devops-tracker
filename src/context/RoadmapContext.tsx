@@ -10,8 +10,13 @@ import React, {
   useRef,
 } from "react";
 import confetti from "canvas-confetti";
-import { ROADMAP_PHASES, Task } from "@/data/roadmapData";
+import {
+  ROADMAP_PHASES,
+  TOTAL_TOPICS_COUNT,
+  TOTAL_MILESTONES_COUNT,
+} from "@/data/roadmapData";
 import { soundFx } from "@/lib/audio";
+import { getClearanceTier, ClearanceTierInfo } from "@/lib/canvasId";
 import {
   DriveUser,
   DriveSyncStatus,
@@ -23,7 +28,6 @@ import {
   disconnectDrive,
 } from "@/lib/googleDriveSync";
 import {
-  FullRoadmapArchive,
   generateCompleteArchive,
   downloadArchiveFile,
   parseRoadmapPayload,
@@ -49,8 +53,16 @@ export type FilterCategory = "all" | "sequential" | "parallel" | "milestones";
 export interface ProjectArtifact {
   repoUrl?: string;
   liveUrl?: string;
+  projectUrl?: string;
   notes?: string;
   updatedAt: string;
+}
+
+export interface TopicDetailState {
+  completed?: boolean;
+  completedAt?: string;
+  userNotes?: string;
+  proofOfWorkUrl?: string;
 }
 
 export interface RoadmapProgressState {
@@ -75,19 +87,26 @@ interface RoadmapContextType {
   revokeCommander: () => void;
   setTestCommander: (enabled: boolean) => void;
 
-  // Custom avatar (Commander-only upload)
+  // Custom avatar
   customAvatarUrl: string | null;
   updateCustomAvatar: (dataUrl: string) => void;
 
+  // Topic / Task Completion State
   completedTaskIds: Set<string>;
   completedMilestoneIds: Set<string>;
   toggleTask: (taskId: string, phaseId: string) => void;
-  toggleMilestone: (milestoneId: string, phaseId: string) => void;
+  toggleTopic: (topicId: string, phaseId: string) => void;
+  toggleMilestone: (milestoneId: string, phaseId?: string) => void;
   resetProgress: () => void;
   exportRoadmapArchive: () => void;
-  ingestRoadmapArchive: (snapshotInput: string | Record<string, any>) => boolean;
+  ingestRoadmapArchive: (snapshotInput: string | Record<string, unknown>) => boolean;
 
-  // Proof-of-Work Artifact Locker
+  // Topic User Notes & Proof of Work
+  topicDetails: Record<string, TopicDetailState>;
+  setTopicNotes: (topicId: string, notes: string) => void;
+  setTopicProofOfWork: (topicId: string, url: string) => void;
+
+  // Milestone Artifact Locker
   projectArtifacts: Record<string, ProjectArtifact>;
   setProjectArtifact: (milestoneId: string, artifact: Partial<ProjectArtifact>) => void;
 
@@ -99,19 +118,14 @@ interface RoadmapContextType {
   disconnectDriveSession: () => void;
   syncDriveManual: () => Promise<void>;
 
-  // Telemetry metrics
-  totalTasks: number;
-  completedTasksCount: number;
-  completionPercentage: number;
-  totalMilestones: number;
-  completedMilestonesCount: number;
+  // Dynamic Telemetry metrics (NO HARDCODED NUMBERS)
+  totalTasks: number; // dynamically computed TOTAL_ITEMS (121)
+  completedTasksCount: number; // COMPLETED_ITEMS
+  completionPercentage: number; // GLOBAL_PROGRESS
+  totalMilestones: number; // 9
+  completedMilestonesCount: number; // VERIFIED_ARTIFACTS
   operationalPhasesCount: number;
-  clearanceRank: {
-    title: string;
-    level: number;
-    color: string;
-    badge: string;
-  };
+  clearanceRank: ClearanceTierInfo & { title: string };
 
   // Filters & Search
   activeFilter: FilterCategory;
@@ -168,50 +182,11 @@ const RoadmapContext = createContext<RoadmapContextType | undefined>(undefined);
 export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isMounted = useIsMounted();
 
-  // Initialize Commander state via Google Identity session or test hook
-  const [isCommander, setIsCommander] = useState<boolean>(() => checkCommanderStatus());
-
-  const [completedTaskIds, setCompletedTaskIds] = useState<Set<string>>(() => {
-    if (typeof window === "undefined") return new Set();
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(ALT_STORAGE_KEY);
-      if (saved) {
-        const parsed: RoadmapProgressState = JSON.parse(saved);
-        if (Array.isArray(parsed.completedTaskIds)) {
-          return new Set(parsed.completedTaskIds);
-        }
-      }
-    } catch {}
-    return new Set();
-  });
-
-  const [completedMilestoneIds, setCompletedMilestoneIds] = useState<Set<string>>(() => {
-    if (typeof window === "undefined") return new Set();
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(ALT_STORAGE_KEY);
-      if (saved) {
-        const parsed: RoadmapProgressState = JSON.parse(saved);
-        if (Array.isArray(parsed.completedMilestoneIds)) {
-          return new Set(parsed.completedMilestoneIds);
-        }
-      }
-    } catch {}
-    return new Set();
-  });
-
-  const [projectArtifacts, setProjectArtifacts] = useState<Record<string, ProjectArtifact>>(() => {
-    if (typeof window === "undefined") return {};
-    try {
-      const saved = localStorage.getItem(ARTIFACTS_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === "object") {
-          return parsed;
-        }
-      }
-    } catch {}
-    return {};
-  });
+  const [isCommander, setIsCommander] = useState<boolean>(false);
+  const [completedTaskIds, setCompletedTaskIds] = useState<Set<string>>(() => new Set());
+  const [completedMilestoneIds, setCompletedMilestoneIds] = useState<Set<string>>(() => new Set());
+  const [topicDetails, setTopicDetails] = useState<Record<string, TopicDetailState>>({});
+  const [projectArtifacts, setProjectArtifacts] = useState<Record<string, ProjectArtifact>>({});
 
   const [isSnapshotModalOpen, setIsSnapshotModalOpen] = useState<boolean>(false);
   const [isBadgeModalOpen, setIsBadgeModalOpen] = useState<boolean>(false);
@@ -227,19 +202,45 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [driveLastSyncedAt, setDriveLastSyncedAt] = useState<string | null>(null);
   const driveAccessTokenRef = useRef<string | null>(null);
 
-  // Custom avatar URL (Commander-only upload, persisted to localStorage)
-  const [customAvatarUrl, setCustomAvatarUrl] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      return localStorage.getItem(AVATAR_STORAGE_KEY) || null;
-    } catch {
-      return null;
-    }
-  });
+  // Custom avatar URL
+  const [customAvatarUrl, setCustomAvatarUrl] = useState<string | null>(null);
 
-  // Restore Drive session and Commander state from storage after initial mount
+  // Hydrate client-side state from storage safely after mount to prevent SSR mismatch
   useEffect(() => {
     try {
+      if (checkCommanderStatus()) {
+        setIsCommander(true);
+      }
+
+      const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(ALT_STORAGE_KEY);
+      if (saved) {
+        const parsed: RoadmapProgressState = JSON.parse(saved);
+        if (Array.isArray(parsed.completedTaskIds)) {
+          setCompletedTaskIds(new Set(parsed.completedTaskIds));
+        }
+        if (Array.isArray(parsed.completedMilestoneIds)) {
+          setCompletedMilestoneIds(new Set(parsed.completedMilestoneIds));
+        }
+      }
+
+      const savedDetails = localStorage.getItem(TASK_DETAILS_STORAGE_KEY);
+      if (savedDetails) {
+        setTopicDetails(JSON.parse(savedDetails));
+      }
+
+      const savedArtifacts = localStorage.getItem(ARTIFACTS_STORAGE_KEY);
+      if (savedArtifacts) {
+        const parsedArt = JSON.parse(savedArtifacts);
+        if (parsedArt && typeof parsedArt === "object") {
+          setProjectArtifacts(parsedArt);
+        }
+      }
+
+      const savedAvatar = localStorage.getItem(AVATAR_STORAGE_KEY);
+      if (savedAvatar) {
+        setCustomAvatarUrl(savedAvatar);
+      }
+
       const savedToken = sessionStorage.getItem(SESSION_TOKEN_KEY);
       const savedUserStr = sessionStorage.getItem(SESSION_USER_KEY);
       if (savedToken) {
@@ -250,15 +251,13 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
             parsedUser = JSON.parse(savedUserStr);
           } catch {}
         }
-        queueMicrotask(() => {
-          if (parsedUser) {
-            setDriveUser(parsedUser);
-            if (isEmailAuthorized(parsedUser.email)) {
-              setIsCommander(true);
-            }
+        if (parsedUser) {
+          setDriveUser(parsedUser);
+          if (isEmailAuthorized(parsedUser.email)) {
+            setIsCommander(true);
           }
-          setDriveSyncStatus("synced");
-        });
+        }
+        setDriveSyncStatus("synced");
       }
     } catch {}
   }, []);
@@ -274,9 +273,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
       localStorage.setItem(ALT_STORAGE_KEY, JSON.stringify(payload));
-    } catch {
-      // Ignore write errors
-    }
+    } catch {}
   }, []);
 
   const addToast = useCallback((toast: Omit<ToastMessage, "id">) => {
@@ -300,9 +297,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         origin: { y: 0.6 },
         colors: ["#00f0ff", "#00ff9d", "#f59e0b", "#8b5cf6"],
       });
-    } catch {
-      // Ignore confetti failure
-    }
+    } catch {}
   }, []);
 
   // Programmatic Test Hook for Automated Testing (Playwright)
@@ -356,16 +351,14 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setCustomAvatarUrl(dataUrl);
       try {
         localStorage.setItem(AVATAR_STORAGE_KEY, dataUrl);
-      } catch {
-        // Ignore quota errors for large data URLs
-      }
+      } catch {}
     },
     [isCommander]
   );
 
-  // Task check toggle logic with dual security
-  const toggleTask = useCallback(
-    (taskId: string, phaseId: string) => {
+  // Topic/Task toggle logic with Dual Security
+  const toggleTopic = useCallback(
+    (topicId: string, phaseId: string) => {
       if (!isCommander) {
         soundFx.playAccessDenied();
         addToast({
@@ -378,24 +371,24 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       setCompletedTaskIds((prev) => {
         const next = new Set(prev);
-        const wasChecked = next.has(taskId);
+        const wasChecked = next.has(topicId);
         if (wasChecked) {
-          next.delete(taskId);
+          next.delete(topicId);
           soundFx.playToggle(false);
         } else {
-          next.add(taskId);
+          next.add(topicId);
           soundFx.playToggle(true);
 
-          // Check if this action completed all tasks in the phase
-          const targetPhase = ROADMAP_PHASES.find((p) => p.id === phaseId);
+          // Check if this action completed all topics in the target phase
+          const targetPhase = ROADMAP_PHASES.find((p) => p.phaseId === phaseId);
           if (targetPhase) {
-            const phaseTasks = targetPhase.modules.flatMap((m) => m.tasks.map((t) => t.id));
-            const allComplete = phaseTasks.every((id) => next.has(id));
+            const phaseTopics = targetPhase.deepDiveTopics.flatMap((m) => m.topics.map((t) => t.id));
+            const allComplete = phaseTopics.length > 0 && phaseTopics.every((id) => next.has(id));
             if (allComplete) {
               triggerCelebration();
               addToast({
                 type: "milestone",
-                title: "PHASE FULLY OPERATIONAL",
+                title: "PHASE CURRICULUM DEFENDED",
                 description: `${targetPhase.title} is now 100% complete!`,
               });
             }
@@ -408,9 +401,11 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [isCommander, addToast, completedMilestoneIds, saveProgress, triggerCelebration]
   );
 
-  // Milestone toggle logic
+  const toggleTask = toggleTopic;
+
+  // Milestone deliverable verification toggle logic
   const toggleMilestone = useCallback(
-    (milestoneId: string, phaseId: string) => {
+    (milestoneId: string, phaseId?: string) => {
       if (!isCommander) {
         soundFx.playAccessDenied();
         addToast({
@@ -421,21 +416,27 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return;
       }
 
+      const targetId = phaseId || milestoneId;
+
       setCompletedMilestoneIds((prev) => {
         const next = new Set(prev);
-        const wasCompleted = next.has(milestoneId);
+        const wasCompleted = next.has(targetId) || next.has(`${targetId}-milestone`);
         if (wasCompleted) {
-          next.delete(milestoneId);
+          next.delete(targetId);
+          next.delete(`${targetId}-milestone`);
           soundFx.playToggle(false);
         } else {
-          next.add(milestoneId);
+          next.add(targetId);
           triggerCelebration();
-          const targetPhase = ROADMAP_PHASES.find((p) => p.id === phaseId);
-          const ms = targetPhase?.milestones.find((m) => m.id === milestoneId);
+          const targetPhase = ROADMAP_PHASES.find(
+            (p) => p.phaseId === targetId || `${p.phaseId}-milestone` === targetId
+          );
           addToast({
             type: "milestone",
             title: "PROJECT MILESTONE DEFENDED",
-            description: ms ? ms.title : "Milestone successfully recorded!",
+            description: targetPhase
+              ? `${targetPhase.milestoneDeliverables.primaryProject} verified!`
+              : "Milestone successfully verified!",
           });
         }
         saveProgress(completedTaskIds, next);
@@ -445,7 +446,48 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [isCommander, addToast, completedTaskIds, saveProgress, triggerCelebration]
   );
 
-  // Proof-of-Work Artifact Locker
+  // User Notes & Proof of Work updates
+  const setTopicNotes = useCallback(
+    (topicId: string, notes: string) => {
+      if (!isCommander) return;
+      setTopicDetails((prev) => {
+        const updated = {
+          ...prev,
+          [topicId]: {
+            ...prev[topicId],
+            userNotes: notes,
+          },
+        };
+        try {
+          localStorage.setItem(TASK_DETAILS_STORAGE_KEY, JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
+    },
+    [isCommander]
+  );
+
+  const setTopicProofOfWork = useCallback(
+    (topicId: string, url: string) => {
+      if (!isCommander) return;
+      setTopicDetails((prev) => {
+        const updated = {
+          ...prev,
+          [topicId]: {
+            ...prev[topicId],
+            proofOfWorkUrl: url,
+          },
+        };
+        try {
+          localStorage.setItem(TASK_DETAILS_STORAGE_KEY, JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
+    },
+    [isCommander]
+  );
+
+  // Proof-of-Work Project Artifact Locker
   const setProjectArtifact = useCallback(
     (milestoneId: string, artifact: Partial<ProjectArtifact>) => {
       if (!isCommander) {
@@ -473,9 +515,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         try {
           localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(next));
-        } catch {
-          // Ignore storage write error
-        }
+        } catch {}
 
         soundFx.playSuccess();
         addToast({
@@ -490,7 +530,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [isCommander, addToast]
   );
 
-  // Prompt Reset Progress (Triggers Cyberpunk Confirmation Modal)
+  // Critical Telemetry Purge Protocol Modal Prompt
   const promptResetProgress = useCallback(() => {
     if (!isCommander) {
       soundFx.playAccessDenied();
@@ -505,7 +545,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsResetModalOpen(true);
   }, [isCommander, addToast]);
 
-  // Reset Progress
+  // Reset Progress Execution
   const resetProgress = useCallback(() => {
     if (!isCommander) {
       soundFx.playAccessDenied();
@@ -514,6 +554,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCompletedTaskIds(new Set());
     setCompletedMilestoneIds(new Set());
     setProjectArtifacts({});
+    setTopicDetails({});
     try {
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(ALT_STORAGE_KEY);
@@ -529,72 +570,60 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
   }, [isCommander, addToast]);
 
-  // Compute Telemetry
-  const allTasks: Task[] = useMemo(
-    () => ROADMAP_PHASES.flatMap((p) => p.modules.flatMap((m) => m.tasks)),
-    []
-  );
-  const totalTasks = allTasks.length;
+  // Dynamic Telemetry Metrics (NO HARDCODED NUMBERS)
+  const totalTasks = TOTAL_TOPICS_COUNT; // 121
   const completedTasksCount = completedTaskIds.size;
-  const completionPercentage = totalTasks > 0 ? Math.round((completedTasksCount / totalTasks) * 100) : 0;
+  const completionPercentage =
+    totalTasks > 0 ? Math.round((completedTasksCount / totalTasks) * 100) : 0;
 
-  const allMilestones = useMemo(() => ROADMAP_PHASES.flatMap((p) => p.milestones), []);
-  const totalMilestones = allMilestones.length;
+  const totalMilestones = TOTAL_MILESTONES_COUNT; // 9
   const completedMilestonesCount = completedMilestoneIds.size;
 
-  // Operational Phases (all tasks in phase completed)
-  const operationalPhasesCount = ROADMAP_PHASES.filter((phase) => {
-    const phaseTaskIds = phase.modules.flatMap((m) => m.tasks.map((t) => t.id));
-    return phaseTaskIds.length > 0 && phaseTaskIds.every((id) => completedTaskIds.has(id));
-  }).length;
+  // Operational Phases (all topics in phase completed)
+  const operationalPhasesCount = useMemo(() => {
+    return ROADMAP_PHASES.filter((phase) => {
+      const topicIds = phase.deepDiveTopics.flatMap((m) => m.topics.map((t) => t.id));
+      return topicIds.length > 0 && topicIds.every((id) => completedTaskIds.has(id));
+    }).length;
+  }, [completedTaskIds]);
 
-  // Dynamic Clearance Rank
+  // Dynamic Clearance Rank calculation based on GLOBAL_PROGRESS
   const clearanceRank = useMemo(() => {
-    if (completionPercentage >= 75) {
-      return { title: "DevOps Lead", level: 4, color: "text-emerald-400", badge: "CR-04 // DEVOPS LEAD" };
-    }
-    if (completionPercentage >= 50) {
-      return { title: "Cloud Architect", level: 3, color: "text-cyan-400", badge: "CR-03 // CLOUD ARCHITECT" };
-    }
-    if (completionPercentage >= 25) {
-      return { title: "SysAdmin", level: 2, color: "text-amber-400", badge: "CR-02 // SYSADMIN" };
-    }
-    return { title: "Cadet", level: 1, color: "text-slate-400", badge: "CR-01 // CADET" };
+    const tier = getClearanceTier(completionPercentage);
+    return {
+      ...tier,
+      title: tier.tier,
+    };
   }, [completionPercentage]);
 
-  // Export Roadmap Archive (v3.0.0 FullRoadmapArchive)
+  // Export Roadmap Archive (v3.1.0 Full hydrated JSON state)
   const exportRoadmapArchive = useCallback(() => {
     soundFx.playBlip(980);
-    const taskDetails: Record<string, any> = {};
-    try {
-      const savedDetailsStr = localStorage.getItem(TASK_DETAILS_STORAGE_KEY);
-      if (savedDetailsStr) {
-        Object.assign(taskDetails, JSON.parse(savedDetailsStr));
-      }
-    } catch {}
-
     const archive = generateCompleteArchive({
       completedTaskIds,
       completedMilestoneIds,
-      taskDetails,
+      taskDetails: topicDetails,
       artifacts: projectArtifacts,
+      customAvatarUrl,
     });
     downloadArchiveFile(archive);
     addToast({
       type: "success",
       title: "SNAPSHOT EXPORTED",
-      description: "Complete curriculum archive JSON (v3.0.0) with live tree state downloaded.",
+      description: "Full hydrated curriculum archive JSON (v3.1.0) downloaded.",
     });
   }, [
     completedTaskIds,
     completedMilestoneIds,
+    topicDetails,
     projectArtifacts,
+    customAvatarUrl,
     addToast,
   ]);
 
   // Ingest Roadmap Archive JSON
   const ingestRoadmapArchive = useCallback(
-    (snapshotInput: string | Record<string, any>): boolean => {
+    (snapshotInput: string | Record<string, unknown>): boolean => {
       if (!isCommander) {
         soundFx.playAccessDenied();
         addToast({
@@ -621,7 +650,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
           taskIds,
           milestoneIds,
           artifacts: artifactsMap,
-          taskDetails: taskDetailsMap,
+          taskDetails: detailsMap,
           customAvatarUrl: importedAvatar,
         } = parseRoadmapPayload(raw);
 
@@ -650,9 +679,10 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
           } catch {}
         }
 
-        if (taskDetailsMap && Object.keys(taskDetailsMap).length > 0) {
+        if (detailsMap && Object.keys(detailsMap).length > 0) {
+          setTopicDetails(detailsMap);
           try {
-            localStorage.setItem(TASK_DETAILS_STORAGE_KEY, JSON.stringify(taskDetailsMap));
+            localStorage.setItem(TASK_DETAILS_STORAGE_KEY, JSON.stringify(detailsMap));
           } catch {}
         }
 
@@ -660,7 +690,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         addToast({
           type: "success",
           title: "TELEMETRY INGESTED",
-          description: `Successfully restored ${nextTasks.size} tasks and ${nextMilestones.size} milestones from snapshot.`,
+          description: `Successfully restored ${nextTasks.size} topics and ${nextMilestones.size} milestones from snapshot.`,
         });
         setIsSnapshotModalOpen(false);
         return true;
@@ -674,13 +704,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return false;
       }
     },
-    [
-      isCommander,
-      saveProgress,
-      triggerCelebration,
-      addToast,
-      setIsSnapshotModalOpen,
-    ]
+    [isCommander, saveProgress, triggerCelebration, addToast, setIsSnapshotModalOpen]
   );
 
   // Google Drive Connection & Ingest
@@ -735,8 +759,12 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const remoteSnapshot = await pullFromDrive(accessToken);
 
       if (remoteSnapshot) {
-        const { taskIds: remoteTasks, milestoneIds: remoteMilestones, artifacts: remoteArtifacts } =
-          parseRoadmapPayload(remoteSnapshot);
+        const {
+          taskIds: remoteTasks,
+          milestoneIds: remoteMilestones,
+          artifacts: remoteArtifacts,
+          taskDetails: remoteDetails,
+        } = parseRoadmapPayload(remoteSnapshot);
 
         const safeRemoteTasks = remoteTasks || [];
         const safeRemoteMilestones = remoteMilestones || [];
@@ -744,7 +772,10 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setCompletedTaskIds((prevTasks) => {
           const mergedTasks = new Set([...Array.from(prevTasks), ...safeRemoteTasks]);
           setCompletedMilestoneIds((prevMilestones) => {
-            const mergedMilestones = new Set([...Array.from(prevMilestones), ...safeRemoteMilestones]);
+            const mergedMilestones = new Set([
+              ...Array.from(prevMilestones),
+              ...safeRemoteMilestones,
+            ]);
             saveProgress(mergedTasks, mergedMilestones);
             return mergedMilestones;
           });
@@ -761,6 +792,16 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
           });
         }
 
+        if (remoteDetails && Object.keys(remoteDetails).length > 0) {
+          setTopicDetails((prevDetails) => {
+            const mergedDetails = { ...prevDetails, ...remoteDetails };
+            try {
+              localStorage.setItem(TASK_DETAILS_STORAGE_KEY, JSON.stringify(mergedDetails));
+            } catch {}
+            return mergedDetails;
+          });
+        }
+
         triggerCelebration();
         addToast({
           type: "success",
@@ -772,8 +813,9 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const archive = generateCompleteArchive({
           completedTaskIds,
           completedMilestoneIds,
-          taskDetails: {},
+          taskDetails: topicDetails,
           artifacts: projectArtifacts,
+          customAvatarUrl,
         });
         await pushToDrive(accessToken, archive);
         addToast({
@@ -797,16 +839,13 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [
     addToast,
-    clearanceRank.title,
-    completionPercentage,
     completedTaskIds,
     completedMilestoneIds,
+    topicDetails,
     projectArtifacts,
+    customAvatarUrl,
     saveProgress,
     triggerCelebration,
-    driveUser?.email,
-    isCommander,
-    customAvatarUrl,
   ]);
 
   // Disconnect Drive
@@ -849,10 +888,15 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
       let tasksToPush = completedTaskIds;
       let milestonesToPush = completedMilestoneIds;
       let artifactsToPush = projectArtifacts;
+      let detailsToPush = topicDetails;
 
       if (remote) {
-        const { taskIds: remoteTasks, milestoneIds: remoteMilestones, artifacts: remoteArtifacts } =
-          parseRoadmapPayload(remote);
+        const {
+          taskIds: remoteTasks,
+          milestoneIds: remoteMilestones,
+          artifacts: remoteArtifacts,
+          taskDetails: remoteDetails,
+        } = parseRoadmapPayload(remote);
 
         const safeRemoteTasks = remoteTasks || [];
         const safeRemoteMilestones = remoteMilestones || [];
@@ -873,13 +917,22 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
             localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(artifactsToPush));
           } catch {}
         }
+
+        if (remoteDetails && Object.keys(remoteDetails).length > 0) {
+          detailsToPush = { ...topicDetails, ...remoteDetails };
+          setTopicDetails(detailsToPush);
+          try {
+            localStorage.setItem(TASK_DETAILS_STORAGE_KEY, JSON.stringify(detailsToPush));
+          } catch {}
+        }
       }
 
       const archive = generateCompleteArchive({
         completedTaskIds: tasksToPush,
         completedMilestoneIds: milestonesToPush,
-        taskDetails: {},
+        taskDetails: detailsToPush,
         artifacts: artifactsToPush,
+        customAvatarUrl,
       });
 
       await pushToDrive(token, archive);
@@ -905,7 +958,8 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         addToast({
           type: "denied",
           title: "SESSION EXPIRED",
-          description: "Google Drive authentication token expired or revoked. Please sign in again.",
+          description:
+            "Google Drive authentication token expired or revoked. Please sign in again.",
         });
       } else {
         setDriveSyncStatus("error");
@@ -923,11 +977,9 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     connectDrive,
     disconnectDriveSession,
     projectArtifacts,
+    topicDetails,
     saveProgress,
-    totalTasks,
     addToast,
-    driveUser?.email,
-    isCommander,
     customAvatarUrl,
   ]);
 
@@ -951,10 +1003,14 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         completedTaskIds,
         completedMilestoneIds,
         toggleTask,
+        toggleTopic,
         toggleMilestone,
         resetProgress,
         exportRoadmapArchive,
         ingestRoadmapArchive,
+        topicDetails,
+        setTopicNotes,
+        setTopicProofOfWork,
         projectArtifacts,
         setProjectArtifact,
         driveSyncStatus,

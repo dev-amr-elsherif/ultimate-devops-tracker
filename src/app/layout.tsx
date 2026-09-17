@@ -35,9 +35,9 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   openGraph: {
-    title: "Ultimate DevOps & Cloud Engineering Master Roadmap (Zero-to-Hero)",
+    title: "DevOps & Cloud Engineering Comprehensive Master Roadmap (2026)",
     description:
-      "29-Week Enterprise DevOps & Cloud Engineering curriculum tracker featuring 12 phases, 132 tasks, 13 project defense milestones, and live proof-of-work credentials.",
+      "Production-ready DevOps & Cloud Engineering Master Roadmap featuring 9 phases, 33 modules, 121 interactive topics, and 9 defended project milestones.",
     url: "https://dev-amr-elsherif.github.io/ultimate-devops-tracker",
     siteName: "DevOps Command Center",
     type: "website",
@@ -45,9 +45,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Ultimate DevOps & Cloud Engineering Master Roadmap",
+    title: "DevOps & Cloud Engineering Comprehensive Master Roadmap (2026)",
     description:
-      "Interactive mission terminal tracking 132 hands-on DevOps protocols and proof-of-work project milestones.",
+      "Interactive mission terminal tracking 9 distinct DevOps engineering phases, 121 interactive topics, and live proof-of-work credentials.",
     creator: "@amrelsherif",
   },
   robots: {

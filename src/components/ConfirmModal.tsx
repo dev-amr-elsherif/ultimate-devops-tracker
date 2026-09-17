@@ -6,9 +6,10 @@ import { AlertTriangle, X, Trash2 } from "lucide-react";
 import { soundFx } from "@/lib/audio";
 
 export const ConfirmModal: React.FC = () => {
-  const { isResetModalOpen, setIsResetModalOpen, resetProgress } = useRoadmap();
+  const { isResetModalOpen, setIsResetModalOpen, resetProgress, totalTasks, totalMilestones } =
+    useRoadmap();
 
-  // Play synthesized error/warning audio FX when opened
+  // Play synthesized warning audio FX when opened
   useEffect(() => {
     if (isResetModalOpen) {
       soundFx.playErrorBuzz();
@@ -73,14 +74,14 @@ export const ConfirmModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Warning Body */}
+        {/* Warning Body with Dynamic Telemetry Counts */}
         <div id="purge-dialog-description" className="space-y-3 mb-6 font-mono text-xs text-slate-300">
           <p className="leading-relaxed">
             You are about to purge all local mission progress. This operation will irrevocably zero out:
           </p>
           <ul className="list-disc list-inside space-y-1 text-slate-400 text-[11px] bg-slate-950/60 p-3 rounded-lg border border-slate-800">
-            <li>132 tracked engineering task completions</li>
-            <li>13 defended milestone project certifications</li>
+            <li>{totalTasks} tracked engineering topic completions</li>
+            <li>{totalMilestones} defended milestone project certifications</li>
             <li>All attached Proof-of-Work artifact evidence &amp; URLs</li>
             <li>Local browser telemetry caches &amp; execution logs</li>
           </ul>
@@ -98,17 +99,17 @@ export const ConfirmModal: React.FC = () => {
             aria-label="Cancel and abort telemetry purge"
             className="flex-1 py-2.5 rounded-xl border border-slate-700 bg-slate-900/80 hover:bg-slate-800 font-mono text-xs text-slate-300 hover:text-white transition-all focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:outline-none"
           >
-            [ CANCEL / ABORT ]
+            ABORT ACTION
           </button>
           <button
             data-testid="confirm-purge-btn"
             type="button"
             onClick={handleConfirm}
-            aria-label="Confirm and purge all roadmap telemetry data"
-            className="flex-1 py-2.5 rounded-xl border border-rose-500 bg-rose-950/60 hover:bg-rose-900/80 text-rose-200 font-mono text-xs font-bold tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(244,63,94,0.3)] hover:shadow-[0_0_20px_rgba(244,63,94,0.5)] focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:outline-none"
+            aria-label="Confirm and purge all telemetry data"
+            className="flex-1 py-2.5 rounded-xl border border-rose-500/50 bg-rose-950/80 hover:bg-rose-900 font-mono text-xs font-bold text-rose-200 hover:text-white flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(244,63,94,0.3)] transition-all focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:outline-none"
           >
-            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-            [ PURGE ALL DATA ]
+            <Trash2 className="w-4 h-4" />
+            <span>PURGE DATA</span>
           </button>
         </div>
       </div>

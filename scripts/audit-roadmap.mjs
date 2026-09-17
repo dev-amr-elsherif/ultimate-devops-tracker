@@ -1,161 +1,177 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import ts from "typescript";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 
-const roadmapTsPath = path.join(rootDir, "src", "data", "roadmapData.ts");
-const tempMjsPath = path.join(rootDir, "scripts", "temp-roadmapData.mjs");
+const roadmapJsonPath = path.join(rootDir, "roadmap.json");
 
 console.log("=================================================");
-console.log(" ROADMAP CONTENT & DATA PARITY AUDIT");
+console.log(" 9-PHASE MASTER ROADMAP DATA PARITY AUDIT (v3.0.0)");
 console.log("=================================================");
 
 try {
-  const tsContent = fs.readFileSync(roadmapTsPath, "utf-8");
+  if (!fs.existsSync(roadmapJsonPath)) {
+    throw new Error(`roadmap.json not found at ${roadmapJsonPath}`);
+  }
 
-  // Transpile TypeScript to ES Module JavaScript
-  const transpiled = ts.transpileModule(tsContent, {
-    compilerOptions: {
-      module: ts.ModuleKind.ESNext,
-      target: ts.ScriptTarget.ES2022,
-    },
-  });
-
-  fs.writeFileSync(tempMjsPath, transpiled.outputText, "utf-8");
-
-  const { ROADMAP_PHASES, GRADUATION_CAPSTONE } = await import(
-    `file://${tempMjsPath.replace(/\\/g, "/")}`
-  );
+  const rawJson = fs.readFileSync(roadmapJsonPath, "utf-8");
+  const roadmap = JSON.parse(rawJson);
 
   let auditPassed = true;
   const errors = [];
 
-  // Check 1: Phases Count
-  const phaseCount = ROADMAP_PHASES.length;
-  console.log(`\n✓ Total Curriculum Phases: ${phaseCount} (Expected: 12)`);
-  if (phaseCount !== 12) {
-    errors.push(`Expected 12 phases, but found ${phaseCount}`);
+  // Check 1: Schema Version & Root Metadata
+  console.log(`\n✓ Schema Version: ${roadmap.schemaVersion}`);
+  console.log(`✓ Roadmap Title: "${roadmap.roadmapTitle}"`);
+  console.log(`✓ Curriculum Architecture: "${roadmap.curriculumArchitecture}"`);
+
+  if (roadmap.schemaVersion !== "3.0.0") {
+    errors.push(`Expected schemaVersion 3.0.0, got ${roadmap.schemaVersion}`);
     auditPassed = false;
   }
 
-  // Check 2: Capstone Project
-  if (!GRADUATION_CAPSTONE || !GRADUATION_CAPSTONE.title) {
-    errors.push("GRADUATION_CAPSTONE is missing or invalid");
+  // Check 2: Phases Count (Expected: 9)
+  const phases = roadmap.phases || [];
+  const phaseCount = phases.length;
+  console.log(`\n✓ Total Curriculum Phases: ${phaseCount} (Expected: 9)`);
+  if (phaseCount !== 9) {
+    errors.push(`Expected 9 phases, but found ${phaseCount}`);
     auditPassed = false;
-  } else {
-    console.log(`✓ Graduation Capstone defined: "${GRADUATION_CAPSTONE.title}"`);
-    console.log(`  - Architecture Layers: ${GRADUATION_CAPSTONE.architectureComponents?.length || 0}`);
-    console.log(`  - Defense Criteria Gates: ${GRADUATION_CAPSTONE.defenseCriteria?.length || 0}`);
-    console.log(`  - Runbook Steps: ${GRADUATION_CAPSTONE.runbookSteps?.length || 0}`);
   }
 
-  // Check 3: Granular Tasks Count & Audit per Phase
+  // Check 3: Sequential & Parallel Track Breakdown
+  let sequentialCount = 0;
+  let parallelCount = 0;
+
+  phases.forEach((p) => {
+    if (p.trackType === "sequential") sequentialCount++;
+    else if (p.trackType === "parallel") parallelCount++;
+    else {
+      errors.push(`Invalid trackType "${p.trackType}" in phase ${p.phaseId}`);
+      auditPassed = false;
+    }
+  });
+
+  console.log(`  - Sequential Phases: ${sequentialCount} (Expected: 5)`);
+  console.log(`  - Parallel Tracks:   ${parallelCount} (Expected: 4)`);
+
+  if (sequentialCount !== 5 || parallelCount !== 4) {
+    errors.push(`Track mismatch: expected 5 sequential & 4 parallel, got ${sequentialCount}/${parallelCount}`);
+    auditPassed = false;
+  }
+
+  // Check 4: Granular Modules & Topics Audit
   console.log("\n-------------------------------------------------");
-  console.log(" PHASE-BY-PHASE TASK BREAKDOWN");
+  console.log(" PHASE-BY-PHASE BREAKDOWN & RECON SOURCES");
   console.log("-------------------------------------------------");
 
-  let grandTotalTasks = 0;
+  let grandTotalModules = 0;
+  let grandTotalTopics = 0;
   let grandTotalMilestones = 0;
 
-  const expectedPhaseCounts = {
-    0: 14,
-    1: 16,
-    2: 13,
-    3: 8,
-    4: 9,
-    5: 14,
-    6: 13,
-    7: 8,
-    8: 13,
-    9: 14,
-    10: 7,
-    11: 3,
-  };
+  phases.forEach((phase) => {
+    const pOrder = phase.phaseOrder;
+    const modules = phase.deepDiveTopics || [];
+    grandTotalModules += modules.length;
 
-  ROADMAP_PHASES.forEach((phase) => {
-    const tasks = phase.modules.flatMap((m) => m.tasks);
-    const milestones = phase.milestones || [];
-    grandTotalTasks += tasks.length;
-    grandTotalMilestones += milestones.length;
+    let phaseTopicsCount = 0;
+    modules.forEach((mod, mIdx) => {
+      const topics = mod.topics || [];
+      phaseTopicsCount += topics.length;
+      grandTotalTopics += topics.length;
 
-    const expected = expectedPhaseCounts[phase.phaseNumber];
-    const match = expected === tasks.length ? "✓" : "✗ MISMATCH";
+      topics.forEach((topicStr, tIdx) => {
+        if (!topicStr || typeof topicStr !== "string" || !topicStr.trim()) {
+          errors.push(`Empty topic in phase ${phase.phaseId}, module ${mIdx}, topic ${tIdx}`);
+          auditPassed = false;
+        }
+      });
+    });
 
-    console.log(
-      `  [Phase ${phase.phaseNumber.toString().padEnd(2)}] ${phase.title.padEnd(52)} : ${tasks.length.toString().padStart(2)} tasks, ${milestones.length} milestones ${match}`
-    );
-
-    if (expected !== undefined && tasks.length !== expected) {
-      errors.push(
-        `Phase ${phase.phaseNumber} task count mismatch: expected ${expected}, got ${tasks.length}`
-      );
+    const ms = phase.milestoneDeliverables;
+    if (ms) {
+      grandTotalMilestones++;
+      if (!ms.primaryProject || !ms.primaryProject.trim()) {
+        errors.push(`Missing primaryProject in phase ${phase.phaseId}`);
+        auditPassed = false;
+      }
+      if (!Array.isArray(ms.githubProofOfWork) || ms.githubProofOfWork.length === 0) {
+        errors.push(`Missing githubProofOfWork checklist in phase ${phase.phaseId}`);
+        auditPassed = false;
+      }
+    } else {
+      errors.push(`Missing milestoneDeliverables in phase ${phase.phaseId}`);
       auditPassed = false;
     }
 
-    // Verify task attributes
-    tasks.forEach((task) => {
-      if (!task.id || typeof task.id !== "string") {
-        errors.push(`Task with missing id in phase ${phase.phaseNumber}`);
-        auditPassed = false;
-      }
-      if (!task.title || typeof task.title !== "string" || !task.title.trim()) {
-        errors.push(`Empty title for task ${task.id} in phase ${phase.phaseNumber}`);
-        auditPassed = false;
-      }
-      if (!task.commandSnippet || typeof task.commandSnippet !== "string" || !task.commandSnippet.trim()) {
-        errors.push(`Empty or null commandSnippet for task "${task.title}" (${task.id})`);
-        auditPassed = false;
-      }
-      if (!Array.isArray(task.acceptanceCriteria) || task.acceptanceCriteria.length === 0) {
-        errors.push(`Missing acceptance criteria for task "${task.title}" (${task.id})`);
-        auditPassed = false;
-      }
-    });
+    const courseraQueries = phase.courseraSearchQueries || [];
+    if (courseraQueries.length === 0) {
+      errors.push(`Missing courseraSearchQueries in phase ${phase.phaseId}`);
+      auditPassed = false;
+    }
 
-    // Verify milestones
-    milestones.forEach((ms) => {
-      if (!ms.id || !ms.title || !ms.codeTemplate) {
-        errors.push(`Invalid milestone in phase ${phase.phaseNumber}: ${ms.title}`);
-        auditPassed = false;
-      }
-    });
+    const parallelInfo = phase.parallelWith ? `[PARALLEL WITH: ${phase.parallelWith}]` : "[SEQUENTIAL]";
+    console.log(
+      `  [Phase ${pOrder.toString().padStart(2, "0")}] ${phase.phaseId} : ${modules.length} modules, ${phaseTopicsCount.toString().padStart(2, " ")} topics, ${courseraQueries.length} Coursera sources ${parallelInfo}`
+    );
   });
 
   console.log("-------------------------------------------------");
-  console.log(`GRAND TOTAL TASKS      : ${grandTotalTasks} (Target >= 100)`);
-  console.log(`GRAND TOTAL MILESTONES : ${grandTotalMilestones}`);
+  console.log(`GRAND TOTAL PHASES     : ${phaseCount} (Expected: 9)`);
+  console.log(`GRAND TOTAL MODULES    : ${grandTotalModules} (Expected: 33)`);
+  console.log(`GRAND TOTAL TOPICS     : ${grandTotalTopics} (Expected: 121)`);
+  console.log(`GRAND TOTAL MILESTONES : ${grandTotalMilestones} (Expected: 9)`);
   console.log("-------------------------------------------------");
 
-  if (grandTotalTasks < 100) {
-    errors.push(`Total tasks count ${grandTotalTasks} is below required 100 threshold.`);
+  if (grandTotalTopics !== 121) {
+    errors.push(`Total topics count ${grandTotalTopics} does not match expected 121.`);
+    auditPassed = false;
+  }
+  if (grandTotalModules !== 33) {
+    errors.push(`Total modules count ${grandTotalModules} does not match expected 33.`);
     auditPassed = false;
   }
 
-  // Clean up temp file
-  try {
-    if (fs.existsSync(tempMjsPath)) {
-      fs.unlinkSync(tempMjsPath);
-    }
-  } catch {}
+  // Check 5: Verify zero legacy hardcoded artifacts across source files
+  const bannedPatterns = [
+    { pattern: /\b132\s+tasks?\b/i, name: "132 tasks" },
+    { pattern: /\b13\s+milestones?\b/i, name: "13 milestones" },
+    { pattern: /\b12\s+phases?\b/i, name: "12 phases" },
+  ];
+
+  const srcDir = path.join(rootDir, "src");
+  function scanDir(dir) {
+    const list = fs.readdirSync(dir);
+    list.forEach((file) => {
+      const fullPath = path.join(dir, file);
+      const stat = fs.statSync(fullPath);
+      if (stat.isDirectory()) {
+        scanDir(fullPath);
+      } else if (/\.(ts|tsx|js|mjs)$/.test(file)) {
+        const content = fs.readFileSync(fullPath, "utf-8");
+        bannedPatterns.forEach(({ pattern, name }) => {
+          if (pattern.test(content)) {
+            errors.push(`Banned legacy pattern "${name}" found in ${path.relative(rootDir, fullPath)}`);
+            auditPassed = false;
+          }
+        });
+      }
+    });
+  }
+  scanDir(srcDir);
 
   if (!auditPassed) {
     console.error("\n❌ AUDIT FAILED with errors:");
     errors.forEach((err) => console.error(`  - ${err}`));
     process.exit(1);
   } else {
-    console.log("\n✅ AUDIT PASSED: 100% Data Parity Verified!");
+    console.log("\n✅ AUDIT PASSED: 100% 9-Phase Master Architecture Parity Verified!");
     process.exit(0);
   }
 } catch (err) {
   console.error("Audit Execution Error:", err);
-  try {
-    if (fs.existsSync(tempMjsPath)) {
-      fs.unlinkSync(tempMjsPath);
-    }
-  } catch {}
   process.exit(1);
 }

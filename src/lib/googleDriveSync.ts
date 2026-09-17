@@ -8,7 +8,7 @@
 
 import { FullRoadmapArchive } from "@/lib/snapshotEngine";
 
-export type DriveSyncPayload = FullRoadmapArchive | Record<string, any>;
+export type DriveSyncPayload = FullRoadmapArchive | Record<string, unknown>;
 
 export const DRIVE_FILE_NAME = "devops-command-telemetry.json";
 export const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.appdata";

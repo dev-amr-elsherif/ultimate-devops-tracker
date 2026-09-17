@@ -32,10 +32,10 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 
-    // Header HUD displays "Tasks Locked" and total 132
+    // Header HUD displays "Tasks Locked" and dynamic total 121
     const taskCountEl = page.locator("text=/Tasks Locked/i");
     await expect(taskCountEl).toBeVisible();
-    await expect(page.locator("text=/0 \\/ 132/")).toBeVisible();
+    await expect(page.locator("text=/0 \\/ 121/")).toBeVisible();
 
     // Verify Observer Mode button in bottom dock
     const modeBtn = page.getByTestId("auth-mode-btn");
@@ -90,7 +90,7 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     // 6. Commander can now toggle tasks
     await firstTask.click();
     await expect(firstTask.locator("svg.lucide-check")).toBeVisible();
-    await expect(page.locator("text=/1 \\/ 132/")).toBeVisible();
+    await expect(page.locator("text=/1 \\/ 121/")).toBeVisible();
 
     // 7. Revoke Commander access via logout/disconnect button click
     const disconnectBtn = page.getByTestId("drive-disconnect-btn");
@@ -109,26 +109,26 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
 
     // Initial progress should be 0%
     await expect(page.locator("text=/Tasks Completed/i")).toBeVisible();
-    const initialTasks = page.locator("text=/0 \\/ 132/");
+    const initialTasks = page.locator("text=/0 \\/ 121/");
     await expect(initialTasks).toBeVisible();
 
-    // Toggle Task 1 in Phase 0
+    // Toggle Task 1 in Phase 01
     const task1 = page.getByTestId("task-checkbox").first();
     await task1.click();
 
     // Assert task 1 is now checked
-    await expect(page.locator("text=/1 \\/ 132/")).toBeVisible();
+    await expect(page.locator("text=/1 \\/ 121/")).toBeVisible();
     await expect(task1.locator("svg.lucide-check")).toBeVisible();
 
-    // Toggle Task 2 in Phase 0
+    // Toggle Task 2 in Phase 01
     const task2 = page.getByTestId("task-checkbox").nth(1);
     await task2.click();
 
     // Assert 2 tasks completed
-    await expect(page.locator("text=/2 \\/ 132/")).toBeVisible();
+    await expect(page.locator("text=/2 \\/ 121/")).toBeVisible();
     await expect(task2.locator("svg.lucide-check")).toBeVisible();
 
-    // Percentage should dynamically update (2/132 ~ 2%)
+    // Percentage should dynamically update (2/121 ~ 2%)
     await expect(page.locator("text=/2%/").first()).toBeVisible();
   });
 
@@ -142,14 +142,14 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     // Complete the first task
     const taskCheckbox = page.getByTestId("task-checkbox").first();
     await taskCheckbox.click();
-    await expect(page.locator("text=/1 \\/ 132/")).toBeVisible();
+    await expect(page.locator("text=/1 \\/ 121/")).toBeVisible();
 
     // Reload page
     await page.reload();
     await page.waitForLoadState("networkidle");
 
     // Re-verify that 1 task remains recorded in telemetry
-    await expect(page.locator("text=/1 \\/ 132/")).toBeVisible();
+    await expect(page.locator("text=/1 \\/ 121/")).toBeVisible();
     const reloadedFirstTask = page.getByTestId("task-checkbox").first();
     await expect(reloadedFirstTask.locator("svg.lucide-check")).toBeVisible();
   });
@@ -163,7 +163,7 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     await asciiTab.click();
 
     // Verify ASCII diagram renders
-    const asciiContent = page.locator("pre:has-text('ULTIMATE DEVOPS & CLOUD ARCHITECTURE EXECUTION TOPOLOGY')");
+    const asciiContent = page.locator("pre:has-text('DEVOPS & CLOUD ENGINEERING COMPREHENSIVE MASTER ROADMAP')");
     await expect(asciiContent).toBeVisible();
 
     // Switch back to Visual Graph tab
@@ -171,23 +171,23 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     await visualTab.click();
 
     // Verify Visual node is visible
-    await expect(page.locator("text=Phase 0: Terminal & OS Primitives").first()).toBeVisible();
+    await expect(page.locator("text=Phase 01: Linux OS Primitives & Networking").first()).toBeVisible();
 
     // Filter by Parallel Tracks
-    const parallelFilter = page.getByRole("button", { name: "PARALLEL TRACKS" });
+    const parallelFilter = page.getByRole("button", { name: "PARALLEL SPECIALIZATIONS" });
     await parallelFilter.click();
 
-    // Assert Parallel Phase 2 is visible
-    await expect(page.locator("text=Version Control: Git Internals & GitHub Architecture")).toBeVisible();
+    // Assert Parallel Phase 02 is visible
+    await expect(page.locator("text=Git Architecture, Cryptographic SCM & Python Systems Automation")).toBeVisible();
 
-    // Filter by Sequential Only
-    const sequentialFilter = page.getByRole("button", { name: "SEQUENTIAL ONLY" });
+    // Filter by Sequential Foundations
+    const sequentialFilter = page.getByRole("button", { name: "SEQUENTIAL FOUNDATIONS" });
     await sequentialFilter.click();
-    await expect(page.locator("#phase-0")).toBeVisible();
+    await expect(page.locator("#phase-01")).toBeVisible();
 
-    // Reset to All Phases
-    await page.getByRole("button", { name: "ALL PHASES" }).click();
-    await expect(page.locator("#phase-0")).toBeVisible();
+    // Reset to All Tracks
+    await page.getByRole("button", { name: "ALL TRACKS" }).click();
+    await expect(page.locator("#phase-01")).toBeVisible();
   });
 
   test("6. Error & Audio Safety - Zero unhandled exceptions or Web Audio crashes", async ({ page }) => {
@@ -205,9 +205,9 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     await audioBtn.click();
 
     // Expand search input and type query
-    const searchInput = page.getByPlaceholder(/Search commands/i);
+    const searchInput = page.getByPlaceholder(/Search topics/i);
     await searchInput.fill("docker");
-    await expect(page.locator("#phase-5")).toBeVisible();
+    await expect(page.locator("#phase-04")).toBeVisible();
     await searchInput.fill("");
 
     // Assert zero page errors
@@ -240,14 +240,14 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     await expect(modalHeading).toBeVisible();
     await expect(page.locator("text=COMMANDER CLEARANCE REQUIRED")).not.toBeVisible();
 
-    // Fill valid JSON snapshot with 4 tasks and 1 milestone
+    // Fill valid JSON snapshot with 4 topics and 1 milestone
     const validSnapshot = JSON.stringify({
-      version: "1.0",
+      schemaVersion: "3.1.0",
       exportedAt: new Date().toISOString(),
-      clearanceRank: "SysAdmin",
+      clearanceRank: "TIER 1: SYSTEMS OPERATOR",
       progressPercentage: 3,
-      completedTaskIds: ["task-0.1.1", "task-0.1.2", "task-0.1.3", "task-1.1.1"],
-      completedMilestoneIds: ["ms-sys-init-probe"],
+      completedTaskIds: ["phase-01-m0-t0", "phase-01-m0-t1", "phase-01-m1-t0", "phase-01-m1-t1"],
+      completedMilestoneIds: ["phase-01"],
     });
 
     const textarea = page.getByTestId("snapshot-textarea");
@@ -265,12 +265,12 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     await expect(page.locator("text=TELEMETRY INGESTED")).toBeVisible();
 
     // Verify HUD telemetry reflects 4 completed tasks
-    await expect(page.locator("text=/4 \\/ 132/")).toBeVisible();
+    await expect(page.locator("text=/4 \\/ 121/")).toBeVisible();
 
     // Verify state persistence across page reload
     await page.reload();
     await page.waitForLoadState("networkidle");
-    await expect(page.locator("text=/4 \\/ 132/")).toBeVisible();
+    await expect(page.locator("text=/4 \\/ 121/")).toBeVisible();
 
     // Open Snapshot modal to access official Export button
     await ingestBtn.click();
@@ -294,33 +294,36 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
         chunks.push(chunk as Buffer);
       }
       const json = JSON.parse(Buffer.concat(chunks).toString("utf-8"));
-      const totalExportedTasks = json.phases?.reduce((sum: number, p: { tasks: unknown[] }) => sum + (p.tasks?.length || 0), 0) ?? 0;
+      const totalExportedTasks = json.phases?.reduce(
+        (sum: number, p: { deepDiveTopics?: Array<{ topics?: unknown[] }> }) =>
+          sum + (p.deepDiveTopics?.reduce((mSum, m) => mSum + (m.topics?.length || 0), 0) || 0),
+        0
+      ) ?? 0;
 
       console.log("--- TEST 7 SNAPSHOT AUDIT ---");
       console.log("Filename:", download.suggestedFilename());
       console.log("schemaVersion:", json.schemaVersion);
       console.log("Phases count:", json.phases?.length);
-      console.log("Total tasks count:", totalExportedTasks);
+      console.log("Total topics count:", totalExportedTasks);
 
-      expect(json.schemaVersion).toBe("3.0.0");
-      expect(json.phases).toHaveLength(12);
-      expect(totalExportedTasks).toBe(132);
-      expect(json.engineer).toBeUndefined();
-      expect(json.summaryTelemetry).toBeUndefined();
-      expect(json.engine).toBeUndefined();
-      expect(json.metadata).toBeUndefined();
+      expect(json.schemaVersion).toBe("3.1.0");
+      expect(json.phases).toHaveLength(9);
+      expect(totalExportedTasks).toBe(121);
 
-      // Verify task fields schema compliance
+      // Verify phase and topic fields schema compliance
       for (const phase of json.phases) {
-        for (const task of phase.tasks) {
-          expect(typeof task.taskId).toBe("string");
-          expect(typeof task.taskNumber).toBe("string");
-          expect(typeof task.title).toBe("string");
-          expect(typeof task.isCompleted).toBe("boolean");
-          expect("completedAt" in task).toBe(true);
-          expect("userNotes" in task).toBe(true);
-          expect("miniTasks" in task).toBe(true);
-          expect("proofOfWork" in task).toBe(true);
+        expect(typeof phase.phaseId).toBe("string");
+        expect(typeof phase.trackType).toBe("string");
+        expect(Array.isArray(phase.deepDiveTopics)).toBe(true);
+        for (const mod of phase.deepDiveTopics) {
+          for (const topic of mod.topics) {
+            expect(typeof topic.id).toBe("string");
+            expect(typeof topic.topicTitle).toBe("string");
+            expect(typeof topic.isCompleted).toBe("boolean");
+            expect("completedAt" in topic).toBe(true);
+            expect("userNotes" in topic).toBe(true);
+            expect("proofOfWorkUrl" in topic).toBe(true);
+          }
         }
       }
     }
@@ -342,7 +345,7 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     // Click Cancel / Abort
     await page.getByTestId("cancel-purge-btn").click();
     await expect(confirmModalTitle).not.toBeVisible();
-    await expect(page.locator("text=/4 \\/ 132/")).toBeVisible();
+    await expect(page.locator("text=/4 \\/ 121/")).toBeVisible();
 
     // Open Snapshot modal again and confirm purge
     await ingestBtn.click();
@@ -354,7 +357,7 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     await page.getByTestId("confirm-purge-btn").click();
     await expect(confirmModalTitle).not.toBeVisible();
     await expect(page.locator("text=TELEMETRY PURGED")).toBeVisible();
-    await expect(page.locator("text=/0 \\/ 132/")).toBeVisible();
+    await expect(page.locator("text=/0 \\/ 121/")).toBeVisible();
   });
 
   test("8. Google Drive Cloud Sync - Widget states, connect, synced indicator, and disconnect lifecycle", async ({ page }) => {
@@ -473,7 +476,7 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 
-    const milestoneCard = page.getByTestId("milestone-card-server-stats");
+    const milestoneCard = page.getByTestId("milestone-card-phase-01");
     await expect(milestoneCard).toBeVisible();
 
     // 1. In Observer Mode: No artifact attached yet -> shows "AWAITING DEPLOYMENT" badge
@@ -530,7 +533,7 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     await page.reload();
     await page.waitForLoadState("networkidle");
 
-    const reloadedCard = page.getByTestId("milestone-card-server-stats");
+    const reloadedCard = page.getByTestId("milestone-card-phase-01");
     await expect(reloadedCard).toBeVisible();
     await expect(reloadedCard.locator("text=/VERIFIED ARTIFACT/i")).toBeVisible();
 
@@ -543,7 +546,7 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 
-    // 1. Locate ID Clearance button in Header HUD
+    // 1. Locate ID Clearance button in Floating Dock
     const badgeBtn = page.getByTestId("clearance-badge-btn");
     await expect(badgeBtn).toBeVisible();
 
@@ -587,7 +590,7 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     // 2. Complete the first task to establish a known state
     const taskCheckbox = page.getByTestId("task-checkbox").first();
     await taskCheckbox.click();
-    await expect(page.locator("text=/1 \\/ 132/")).toBeVisible();
+    await expect(page.locator("text=/1 \\/ 121/")).toBeVisible();
 
     // 3. Open Ingest Snapshot Modal
     const ingestBtn = page.getByTestId("ingest-snapshot-btn");
@@ -613,8 +616,8 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     // Close modal
     await page.locator("button[aria-label='Close modal']").click();
 
-    // 6. Verify existing progress remains intact (1 / 132 tasks still complete)
-    await expect(page.locator("text=/1 \\/ 132/")).toBeVisible();
+    // 6. Verify existing progress remains intact (1 / 121 tasks still complete)
+    await expect(page.locator("text=/1 \\/ 121/")).toBeVisible();
   });
 
   test("13. Google Drive Fault Tolerance - Gracefully handles HTTP 401 Unauthorized and resets state", async ({ page }) => {

@@ -1,14 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { Milestone } from "@/data/roadmapData";
-import { useRoadmap } from "@/context/RoadmapContext";
+import { MilestoneDeliverables } from "@/types/roadmap";
+import { useRoadmap, ProjectArtifact } from "@/context/RoadmapContext";
 import {
   Trophy,
   Check,
-  CheckCheck,
-  Copy,
-  Terminal,
   Shield,
   Lock,
   ExternalLink,
@@ -35,57 +32,56 @@ const GithubIcon: React.FC<{ className?: string }> = ({ className = "w-3 h-3" })
 );
 
 interface MilestoneCardProps {
-  milestone: Milestone;
+  milestone?: MilestoneDeliverables;
+  milestoneDeliverables?: MilestoneDeliverables;
   phaseId: string;
 }
 
-export const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, phaseId }) => {
+export const MilestoneCard: React.FC<MilestoneCardProps> = ({
+  milestone,
+  milestoneDeliverables,
+  phaseId,
+}) => {
+  const ms = milestoneDeliverables || milestone;
   const {
     isCommander,
     completedMilestoneIds,
     toggleMilestone,
-    addToast,
     projectArtifacts,
     setProjectArtifact,
+    isMounted,
   } = useRoadmap();
-  const [copied, setCopied] = useState(false);
 
-  const isCompleted = completedMilestoneIds.has(milestone.id);
-  const artifact = projectArtifacts[milestone.id] || projectArtifacts[milestone.slug];
-  const hasArtifact = Boolean(
-    artifact && (artifact.repoUrl?.trim() || artifact.liveUrl?.trim() || artifact.notes?.trim())
-  );
+  const artifact: Partial<ProjectArtifact> = isMounted
+    ? projectArtifacts[phaseId] || projectArtifacts[`${phaseId}-milestone`] || {}
+    : {};
 
-  // Artifact Drawer State
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [repoInput, setRepoInput] = useState(artifact?.repoUrl || "");
-  const [liveInput, setLiveInput] = useState(artifact?.liveUrl || "");
+  const [liveInput, setLiveInput] = useState(artifact?.liveUrl || ms?.projectUrl || "");
   const [notesInput, setNotesInput] = useState(artifact?.notes || "");
   const [urlError, setUrlError] = useState<string | null>(null);
 
+  if (!ms) return null;
+
+  const isVerified = isMounted
+    ? completedMilestoneIds.has(phaseId) ||
+      completedMilestoneIds.has(`${phaseId}-milestone`) ||
+      ms.isVerified
+    : false;
+
+  const hasArtifact = Boolean(
+    artifact && (artifact.repoUrl?.trim() || artifact.liveUrl?.trim() || artifact.notes?.trim() || ms.projectUrl)
+  );
+
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
-    toggleMilestone(milestone.id, phaseId);
-  };
-
-  const handleCopy = () => {
-    if (!milestone.codeTemplate && !milestone.verificationCommand) return;
-    const textToCopy = milestone.verificationCommand || milestone.codeTemplate || "";
-    soundFx.playBlip(950);
-    navigator.clipboard.writeText(textToCopy).then(() => {
-      setCopied(true);
-      addToast({
-        type: "info",
-        title: "TEMPLATE COPIED",
-        description: "Milestone code/command copied to clipboard.",
-      });
-      setTimeout(() => setCopied(false), 2200);
-    });
+    toggleMilestone(phaseId);
   };
 
   const handleOpenDrawer = () => {
     setRepoInput(artifact?.repoUrl || "");
-    setLiveInput(artifact?.liveUrl || "");
+    setLiveInput(artifact?.liveUrl || ms.projectUrl || "");
     setNotesInput(artifact?.notes || "");
     setUrlError(null);
     soundFx.playBlip(700);
@@ -111,7 +107,7 @@ export const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, phaseId
     }
 
     setUrlError(null);
-    setProjectArtifact(milestone.id, {
+    setProjectArtifact(phaseId, {
       repoUrl: repoInput.trim() || undefined,
       liveUrl: liveInput.trim() || undefined,
       notes: notesInput.trim() || undefined,
@@ -119,53 +115,59 @@ export const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, phaseId
     setIsDrawerOpen(false);
   };
 
+  // Extract slug from phaseId or primaryProject for test selectors
+  const slug = phaseId.toLowerCase().replace(/[^a-z0-9]/g, "-");
+
   return (
     <div
-      data-testid={`milestone-card-${milestone.slug}`}
-      className={`rounded-xl p-4 border transition-all relative overflow-hidden ${
-        isCompleted
-          ? "bg-amber-950/30 border-amber-400/60 shadow-[0_0_20px_rgba(245,158,11,0.2)] border-glow-amber"
+      data-testid={`milestone-card-${slug}`}
+      className={`rounded-xl p-4 sm:p-5 border transition-all relative overflow-hidden ${
+        isVerified
+          ? "bg-amber-950/25 border-amber-400/60 shadow-[0_0_25px_rgba(245,158,11,0.2)] border-glow-amber"
           : "bg-slate-950/80 border-amber-500/30 hover:border-amber-400/50"
       }`}
     >
-      {/* Top Banner */}
-      <div className="flex items-start justify-between gap-3 mb-2">
-        <div className="flex items-center gap-2">
+      {/* Top Banner: Primary Project Badge & Verification Button */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+        <div className="flex items-start gap-3">
           <div
-            className={`p-2 rounded-lg border ${
-              isCompleted
-                ? "bg-amber-500/20 border-amber-400 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.4)]"
+            className={`p-2.5 rounded-xl border shrink-0 ${
+              isVerified
+                ? "bg-amber-500/20 border-amber-400 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.4)]"
                 : "bg-amber-950/40 border-amber-500/30 text-amber-400"
             }`}
           >
             <Trophy className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 font-bold tracking-wider uppercase">
-                PROJECT MILESTONE
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/40 text-amber-300 font-bold tracking-wider uppercase">
+                ⚔ PRIMARY PROJECT DELIVERABLE
               </span>
-              <span className="text-xs font-mono text-slate-400 font-medium">[{milestone.slug}]</span>
+              <span className="text-xs font-mono text-slate-400 font-semibold uppercase">
+                [{phaseId}]
+              </span>
             </div>
-            <h3 className="text-sm sm:text-base font-bold font-mono text-slate-100 mt-0.5">
-              {milestone.title}
+            <h3 className="text-sm sm:text-base font-bold font-mono text-slate-100 mt-1">
+              {ms.primaryProject}
             </h3>
           </div>
         </div>
 
-        {/* Milestone Completion Toggle */}
+        {/* Milestone Verification Toggle Button */}
         <button
+          data-testid={`milestone-verify-btn-${phaseId}`}
           type="button"
           onClick={handleToggle}
           aria-label={
             isCommander
-              ? isCompleted
-                ? `Mark milestone ${milestone.title} incomplete`
-                : `Defend and record milestone ${milestone.title}`
-              : `Milestone ${milestone.title} locked, Commander authentication required`
+              ? isVerified
+                ? `Mark milestone ${ms.primaryProject} unverified`
+                : `Verify and defend milestone ${ms.primaryProject}`
+              : `Milestone ${ms.primaryProject} locked, Commander authentication required`
           }
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-mono text-xs font-bold transition-all focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none ${
-            isCompleted
+          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border font-mono text-xs font-bold transition-all shrink-0 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none ${
+            isVerified
               ? "bg-amber-500 border-amber-400 text-slate-950 shadow-[0_0_15px_rgba(245,158,11,0.4)]"
               : isCommander
               ? "bg-slate-900 border-amber-500/40 text-amber-300 hover:bg-amber-950/40 hover:border-amber-400"
@@ -173,13 +175,13 @@ export const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, phaseId
           }`}
           title={
             isCommander
-              ? isCompleted
-                ? "Mark Incomplete"
-                : "Defend & Record Milestone"
+              ? isVerified
+                ? "Mark Unverified"
+                : "Defend & Verify Milestone"
               : "Observer Mode: Commander Authentication Required"
           }
         >
-          {isCompleted ? (
+          {isVerified ? (
             <>
               <Check className="w-3.5 h-3.5 stroke-[3]" />
               <span>DEFENDED</span>
@@ -195,28 +197,29 @@ export const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, phaseId
         </button>
       </div>
 
-      <p className="text-xs text-slate-300 leading-relaxed mt-2 mb-3">
-        {milestone.description}
+      {/* Description */}
+      <p className="text-xs text-slate-300 leading-relaxed mb-3">
+        {ms.description}
       </p>
 
-      {/* Deliverables checklist */}
-      <div className="p-3 rounded-lg bg-slate-900/70 border border-slate-800/90 mb-3">
-        <div className="text-[11px] font-mono font-bold text-amber-300/90 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+      {/* GitHub Proof-of-Work Requirements Checklist */}
+      <div className="p-3.5 rounded-lg bg-slate-900/70 border border-slate-800/90 mb-3">
+        <div className="text-[11px] font-mono font-bold text-amber-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
           <Shield className="w-3.5 h-3.5 text-amber-400" />
-          KEY DELIVERABLES & DEFENSE CRITERIA
+          GITHUB PROOF-OF-WORK REQUIREMENTS CHECKLIST
         </div>
         <ul className="space-y-1.5">
-          {milestone.deliverables.map((item, idx) => (
+          {ms.githubProofOfWork.map((req, idx) => (
             <li key={idx} className="flex items-start gap-2 text-xs font-mono text-slate-300">
               <span className="text-amber-400 shrink-0 font-bold">✓</span>
-              <span>{item}</span>
+              <span>{req}</span>
             </li>
           ))}
         </ul>
       </div>
 
-      {/* Proof-of-Work Artifact Locker */}
-      <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-800/80 mb-3 space-y-2">
+      {/* Proof-of-Work Artifact Locker & Evidence Links */}
+      <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-800/80 space-y-2">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
             {hasArtifact ? (
@@ -240,7 +243,6 @@ export const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, phaseId
                     target="_blank"
                     rel="noopener noreferrer"
                     data-testid="artifact-repo-link"
-                    aria-label={`View GitHub Repository for ${milestone.title}`}
                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-cyan-300 hover:text-cyan-200 transition-colors shadow-sm focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
                     title="View GitHub Repository"
                   >
@@ -248,13 +250,12 @@ export const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, phaseId
                     <span>[ ⌥ REPO ]</span>
                   </a>
                 )}
-                {artifact?.liveUrl && (
+                {(artifact?.liveUrl || ms.projectUrl) && (
                   <a
-                    href={artifact.liveUrl}
+                    href={artifact?.liveUrl || ms.projectUrl!}
                     target="_blank"
                     rel="noopener noreferrer"
                     data-testid="artifact-live-link"
-                    aria-label={`View Live Demonstration for ${milestone.title}`}
                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-emerald-300 hover:text-emerald-200 transition-colors shadow-sm focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
                     title="View Live Demonstration"
                   >
@@ -272,7 +273,6 @@ export const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, phaseId
               type="button"
               onClick={isDrawerOpen ? () => setIsDrawerOpen(false) : handleOpenDrawer}
               data-testid="artifact-attach-btn"
-              aria-label={hasArtifact ? `Edit artifact evidence for ${milestone.title}` : `Attach evidence for ${milestone.title}`}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-slate-800 hover:bg-amber-950/40 border border-amber-500/40 hover:border-amber-400 text-amber-300 transition-all shadow-sm focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
             >
               <Wrench className="w-3 h-3" />
@@ -289,12 +289,12 @@ export const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, phaseId
           </div>
         )}
 
-        {/* Inline Cyber Evidence Configuration Form */}
+        {/* Inline Evidence Configuration Form */}
         {isCommander && isDrawerOpen && (
           <form onSubmit={handleSaveArtifact} className="mt-2.5 pt-2.5 border-t border-slate-800 space-y-2.5">
             <div className="text-[11px] font-mono font-bold text-amber-300 flex items-center gap-1.5">
               <Wrench className="w-3.5 h-3.5 text-amber-400" />
-              PROOF-OF-WORK CONFIGURATION // {milestone.slug}
+              PROOF-OF-WORK CONFIGURATION // {phaseId}
             </div>
 
             {urlError && (
@@ -305,7 +305,7 @@ export const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, phaseId
 
             <div className="space-y-1">
               <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider">
-                GitHub Repository URL *
+                GitHub Repository URL
               </label>
               <div className="relative">
                 <GithubIcon className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-500" />
@@ -325,7 +325,7 @@ export const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, phaseId
 
             <div className="space-y-1">
               <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider">
-                Live Demo URL (Optional)
+                Live Demo / Architecture Diagram URL (Optional)
               </label>
               <div className="relative">
                 <Globe className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-500" />
@@ -379,45 +379,6 @@ export const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, phaseId
           </form>
         )}
       </div>
-
-      {/* Code Template / Verification Command preview */}
-      {(milestone.codeTemplate || milestone.verificationCommand) && (
-        <div className="rounded-lg overflow-hidden border border-slate-800 bg-slate-950">
-          <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900 border-b border-slate-800 text-[11px] font-mono text-slate-400">
-            <span className="flex items-center gap-1.5 text-amber-400">
-              <Terminal className="w-3.5 h-3.5" />
-              {milestone.verificationCommand ? "Verification Command" : "Starter Blueprint"}
-            </span>
-            <button
-              type="button"
-              onClick={handleCopy}
-              aria-label={copied ? "Code copied to clipboard" : `Copy ${milestone.verificationCommand ? "verification command" : "starter blueprint"} for ${milestone.title}`}
-              className="flex items-center gap-1 text-[11px] font-mono text-slate-400 hover:text-amber-300 transition-colors focus-visible:ring-1 focus-visible:ring-amber-400 focus-visible:outline-none rounded px-1"
-            >
-              {copied ? (
-                <>
-                  <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-emerald-400 font-bold">COPIED</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>COPY</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          <pre
-            tabIndex={0}
-            role="region"
-            aria-label={`Code blueprint for ${milestone.title}`}
-            className="p-3 text-xs font-mono text-slate-200 overflow-x-auto leading-relaxed max-h-48 selection:bg-amber-500/30 selection:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-400"
-          >
-            <code>{milestone.codeTemplate || milestone.verificationCommand}</code>
-          </pre>
-        </div>
-      )}
     </div>
   );
 };

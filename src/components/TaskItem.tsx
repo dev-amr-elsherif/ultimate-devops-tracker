@@ -1,55 +1,89 @@
 "use client";
 
-import React, { useState } from "react";
-import { Task } from "@/data/roadmapData";
+import React, { useState, useEffect } from "react";
+import { DeepDiveTopic } from "@/types/roadmap";
 import { useRoadmap } from "@/context/RoadmapContext";
-import { Check, Copy, CheckCheck, Lock, ChevronDown, ChevronUp, Terminal, ShieldCheck } from "lucide-react";
+import {
+  Check,
+  Lock,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  Link as LinkIcon,
+  ExternalLink,
+  Save,
+} from "lucide-react";
 import { soundFx } from "@/lib/audio";
 
 interface TaskItemProps {
-  task: Task;
+  topic?: DeepDiveTopic;
+  task?: DeepDiveTopic; // backwards-compatible prop name
   phaseId: string;
 }
 
-export const TaskItem: React.FC<TaskItemProps> = ({ task, phaseId }) => {
-  const { isCommander, completedTaskIds, toggleTask, addToast } = useRoadmap();
-  const [copied, setCopied] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+export const TaskItem: React.FC<TaskItemProps> = ({ topic, task, phaseId }) => {
+  const item = topic || task;
+  const {
+    isMounted,
+    isCommander,
+    completedTaskIds,
+    toggleTopic,
+    topicDetails,
+    setTopicNotes,
+    setTopicProofOfWork,
+    addToast,
+  } = useRoadmap();
 
-  const isChecked = completedTaskIds.has(task.id);
+  const details = item ? topicDetails[item.id] || {} : {};
+  const currentNotes = details.userNotes ?? item?.userNotes ?? "";
+  const currentProofUrl = details.proofOfWorkUrl ?? item?.proofOfWorkUrl ?? "";
+
+  const [isNotesOpen, setIsNotesOpen] = useState(false);
+  const [notesInput, setNotesInput] = useState(currentNotes);
+  const [proofUrlInput, setProofUrlInput] = useState(currentProofUrl);
+  const [isSaved, setIsSaved] = useState(false);
+
+  useEffect(() => {
+    setNotesInput(currentNotes);
+    setProofUrlInput(currentProofUrl);
+  }, [currentNotes, currentProofUrl]);
+
+  if (!item) return null;
+
+  const isChecked = isMounted ? completedTaskIds.has(item.id) : false;
 
   const handleCheckboxClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    toggleTask(task.id, phaseId);
+    toggleTopic(item.id, phaseId);
   };
 
-  const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!task.commandSnippet) return;
+  const handleSaveDetails = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isCommander) return;
 
-    soundFx.playBlip(1000);
-    navigator.clipboard.writeText(task.commandSnippet).then(() => {
-      setCopied(true);
-      addToast({
-        type: "info",
-        title: "COMMAND COPIED",
-        description: "Snippet copied to system clipboard.",
-      });
-      setTimeout(() => setCopied(false), 2200);
+    setTopicNotes(item.id, notesInput.trim());
+    setTopicProofOfWork(item.id, proofUrlInput.trim());
+    setIsSaved(true);
+    soundFx.playSuccess();
+    addToast({
+      type: "success",
+      title: "TELEMETRY LOGGED",
+      description: "Topic notes and proof-of-work saved.",
     });
+    setTimeout(() => setIsSaved(false), 2000);
   };
 
   return (
     <div
       className={`rounded-lg border transition-all ${
         isChecked
-          ? "bg-emerald-950/20 border-emerald-500/40 shadow-[0_0_10px_rgba(0,255,157,0.08)]"
+          ? "bg-emerald-950/20 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.12)]"
           : "bg-slate-900/40 border-slate-800/80 hover:border-cyan-500/30"
       }`}
     >
-      {/* Task Header Bar */}
-      <div className="flex items-start gap-3.5 p-3.5">
-        {/* Checkbox */}
+      {/* Topic Row */}
+      <div className="flex items-start gap-3 p-3">
+        {/* Checkbox with Neon Cyber Check Effect */}
         <button
           data-testid="task-checkbox"
           type="button"
@@ -58,14 +92,14 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, phaseId }) => {
           aria-label={
             isCommander
               ? isChecked
-                ? `Mark task ${task.title} incomplete`
-                : `Mark task ${task.title} completed`
-              : `Task ${task.title} locked, Commander authentication required`
+                ? `Mark topic "${item.topicTitle}" incomplete`
+                : `Mark topic "${item.topicTitle}" completed`
+              : `Topic locked, Commander authentication required`
           }
           onClick={handleCheckboxClick}
           className={`mt-0.5 relative w-5 h-5 rounded flex items-center justify-center shrink-0 border transition-all focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none ${
             isChecked
-              ? "bg-emerald-500 border-emerald-400 text-slate-950 shadow-[0_0_8px_rgba(0,255,157,0.6)]"
+              ? "bg-[#10b981] border-emerald-300 text-slate-950 shadow-[0_0_12px_rgba(16,185,129,0.85)] scale-105"
               : isCommander
               ? "border-slate-600 bg-slate-950/60 hover:border-cyan-400"
               : "border-slate-700 bg-slate-950/80 hover:border-rose-500/60 cursor-not-allowed"
@@ -85,118 +119,133 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, phaseId }) => {
           ) : null}
         </button>
 
-        {/* Task Info & Expand Trigger */}
-        <button
-          type="button"
-          onClick={() => {
-            soundFx.playBlip(550);
-            setIsExpanded(!isExpanded);
-          }}
-          aria-expanded={isExpanded}
-          aria-label={`Toggle details for task: ${task.title}`}
-          className="flex-1 flex items-start justify-between gap-3 text-left cursor-pointer select-none focus-visible:ring-1 focus-visible:ring-cyan-400 focus-visible:outline-none rounded group"
-        >
-          <div className="flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h4
-                className={`text-xs sm:text-sm font-mono font-semibold transition-colors ${
-                  isChecked
-                    ? "line-through text-slate-400"
-                    : "text-slate-100 group-hover:text-cyan-300"
-                }`}
+        {/* Topic Title */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <h4
+              className={`text-xs sm:text-sm font-mono leading-relaxed transition-colors ${
+                isChecked
+                  ? "line-through text-slate-400 font-medium"
+                  : "text-slate-100 font-semibold hover:text-cyan-300"
+              }`}
+            >
+              {item.topicTitle}
+            </h4>
+
+            {/* Proof of work indicator if set */}
+            {currentProofUrl && !isNotesOpen && (
+              <a
+                href={currentProofUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 text-[10px] font-mono text-cyan-400 hover:text-cyan-200 bg-cyan-950/60 border border-cyan-500/30 px-1.5 py-0.5 rounded shrink-0 shadow-sm"
+                title="View proof-of-work link"
               >
-                {task.title}
-              </h4>
-
-              {/* Tags */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {task.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800/80 border border-slate-700 text-cyan-400/80"
-                  >
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-              {task.description}
-            </p>
-          </div>
-
-          {/* Expand / Collapse Chevron */}
-          <div className="text-slate-500 group-hover:text-cyan-400 p-1 shrink-0">
-            {isExpanded ? (
-              <ChevronUp className="w-4 h-4 text-cyan-400" />
-            ) : (
-              <ChevronDown className="w-4 h-4" />
+                <ExternalLink className="w-3 h-3" />
+                <span className="hidden sm:inline">PROOF</span>
+              </a>
             )}
           </div>
+        </div>
+
+        {/* User Notes Toggle Button */}
+        <button
+          data-testid="topic-notes-toggle-btn"
+          type="button"
+          onClick={() => {
+            soundFx.playBlip(600);
+            setIsNotesOpen(!isNotesOpen);
+          }}
+          aria-expanded={isNotesOpen}
+          aria-label={`Toggle telemetry notes for topic: ${item.topicTitle}`}
+          className={`p-1 rounded text-xs font-mono transition-colors shrink-0 flex items-center gap-1 ${
+            isNotesOpen || currentNotes
+              ? "text-cyan-400 bg-cyan-950/40 border border-cyan-500/30"
+              : "text-slate-500 hover:text-slate-300 bg-slate-900 border border-slate-800"
+          }`}
+          title="Toggle notes and proof-of-work"
+        >
+          <FileText className="w-3.5 h-3.5" />
+          {isNotesOpen ? (
+            <ChevronUp className="w-3 h-3" />
+          ) : (
+            <ChevronDown className="w-3 h-3" />
+          )}
         </button>
       </div>
 
-      {/* Collapsible Details Drawer: Snippet & Acceptance Criteria */}
-      {isExpanded && (
-        <div className="px-3.5 pb-3.5 pt-1 border-t border-slate-800/80 space-y-3 animate-in fade-in duration-150">
-          {/* Code Snippet Box */}
-          {task.commandSnippet && (
-            <div className="relative rounded-lg overflow-hidden border border-slate-800 bg-slate-950">
-              <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900 border-b border-slate-800 text-[11px] font-mono text-slate-400">
-                <span className="flex items-center gap-1.5 text-cyan-400">
-                  <Terminal className="w-3.5 h-3.5" />
-                  {task.snippetLanguage || "bash"}
-                </span>
+      {/* User Notes & Proof of Work Drawer */}
+      {isNotesOpen && (
+        <div className="px-3.5 pb-3.5 pt-1 border-t border-slate-800/80 space-y-2.5 animate-in fade-in duration-150">
+          {isCommander ? (
+            <form onSubmit={handleSaveDetails} className="space-y-2">
+              <div className="space-y-1">
+                <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                  <FileText className="w-3 h-3 text-cyan-400" />
+                  <span>Personal Engineering Notes</span>
+                </label>
+                <textarea
+                  data-testid="topic-notes-input"
+                  rows={2}
+                  value={notesInput}
+                  onChange={(e) => setNotesInput(e.target.value)}
+                  placeholder="Record insights, debugging caveats, or operational notes..."
+                  className="w-full px-3 py-1.5 rounded bg-slate-950 border border-slate-700 font-mono text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 resize-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                  <LinkIcon className="w-3 h-3 text-emerald-400" />
+                  <span>Proof-of-Work URL (GitHub Commit, PR, or Demo)</span>
+                </label>
+                <input
+                  data-testid="topic-proof-input"
+                  type="url"
+                  value={proofUrlInput}
+                  onChange={(e) => setProofUrlInput(e.target.value)}
+                  placeholder="https://github.com/..."
+                  className="w-full px-3 py-1.5 rounded bg-slate-950 border border-slate-700 font-mono text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-1">
                 <button
-                  type="button"
-                  onClick={handleCopy}
-                  aria-label={copied ? "Command copied" : `Copy command snippet for ${task.title}`}
-                  className="flex items-center gap-1 text-[11px] font-mono text-slate-400 hover:text-cyan-300 transition-colors p-1 focus-visible:ring-1 focus-visible:ring-cyan-400 focus-visible:outline-none rounded"
+                  data-testid="topic-save-btn"
+                  type="submit"
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded text-xs font-mono font-bold text-slate-950 bg-cyan-400 hover:bg-cyan-300 border border-cyan-300 transition-colors shadow-[0_0_10px_rgba(6,182,212,0.3)]"
                 >
-                  {copied ? (
-                    <>
-                      <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />
-                      <span className="text-emerald-400 font-bold">COPIED</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>COPY</span>
-                    </>
-                  )}
+                  <Save className="w-3 h-3" />
+                  <span>{isSaved ? "SAVED" : "SAVE TELEMETRY"}</span>
                 </button>
               </div>
+            </form>
+          ) : (
+            <div className="space-y-2 text-xs font-mono">
+              {currentNotes ? (
+                <div className="bg-slate-950/70 p-2.5 rounded border border-slate-800 text-slate-300">
+                  <span className="text-cyan-400 font-bold block mb-1">ENGINEER NOTES:</span>
+                  {currentNotes}
+                </div>
+              ) : (
+                <p className="text-slate-500 italic">No notes recorded for this topic.</p>
+              )}
 
-              <pre
-                tabIndex={0}
-                role="region"
-                aria-label={`Command snippet for ${task.title}`}
-                className="p-3 text-xs font-mono text-slate-200 overflow-x-auto selection:bg-cyan-500/30 selection:text-white leading-relaxed focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-400"
-              >
-                <code>{task.commandSnippet}</code>
-              </pre>
-            </div>
-          )}
-
-          {/* Acceptance Criteria */}
-          {task.acceptanceCriteria && task.acceptanceCriteria.length > 0 && (
-            <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
-              <div className="flex items-center gap-1.5 text-[11px] font-mono font-bold text-slate-300 uppercase mb-2">
-                <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
-                ACCEPTANCE CRITERIA
-              </div>
-              <ul className="space-y-1">
-                {task.acceptanceCriteria.map((crit, idx) => (
-                  <li
-                    key={idx}
-                    className="flex items-start gap-2 text-xs text-slate-400 font-mono"
+              {currentProofUrl && (
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-slate-400">Proof of Work:</span>
+                  <a
+                    href={currentProofUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-emerald-400 hover:text-emerald-300 inline-flex items-center gap-1 underline underline-offset-2"
                   >
-                    <span className="text-cyan-400 shrink-0">▸</span>
-                    <span>{crit}</span>
-                  </li>
-                ))}
-              </ul>
+                    <span>{currentProofUrl}</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              )}
             </div>
           )}
         </div>

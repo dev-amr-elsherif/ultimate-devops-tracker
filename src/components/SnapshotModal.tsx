@@ -52,7 +52,7 @@ interface SnapshotDialogProps {
   onClose: () => void;
   onPromptAuth: () => void;
   onPromptReset: () => void;
-  onImport: (input: string | Record<string, any>) => boolean;
+  onImport: (input: string | Record<string, unknown>) => boolean;
   onExport: () => void;
 }
 
@@ -136,7 +136,7 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
                 Telemetry Snapshot Ingest
               </h3>
               <p className="text-xs text-slate-400 font-mono">
-                DATA RESTORATION PROTOCOL
+                DATA RESTORATION PROTOCOL (v3.1.0 COMPLIANT)
               </p>
             </div>
           </div>
@@ -156,7 +156,7 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
               EXPORT COMPLETE CURRICULUM ARCHIVE
             </div>
             <div className="text-[10px] font-mono text-slate-400">
-              Download live v3.0.0 JSON snapshot (12 phases, 132 tasks)
+              Download live v3.1.0 JSON snapshot (9 phases, 121 topics)
             </div>
           </div>
           <button
@@ -212,7 +212,7 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
               )}
             </div>
             <div className="text-[10px] font-mono text-slate-500 mt-1">
-              Supports Complete Roadmap Archive v3.0.0 & Legacy Telemetry Payloads
+              Supports Complete Roadmap Archive v3.1.0 & Legacy v3.0.0 Payloads
             </div>
           </div>
 
@@ -226,7 +226,7 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
               rows={4}
               value={jsonInput}
               onChange={(e) => handleJsonChange(e.target.value)}
-              placeholder='{"version": "1.0", "completedTaskIds": ["task-0.1.1"], ...}'
+              placeholder='{"schemaVersion": "3.1.0", "completedTaskIds": ["phase-01-m0-t0"], ...}'
               className="w-full p-3 bg-slate-900 border border-slate-800 focus:border-cyan-400 rounded-lg text-xs font-mono text-cyan-200 placeholder:text-slate-600 focus:outline-none transition-all resize-none"
             />
           </div>
@@ -248,12 +248,12 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
                   <span>VALID SNAPSHOT DETECTED</span>
                 </div>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-900/60 border border-cyan-500/40 text-cyan-300">
-                  v{parsedPreview.schemaVersion || "3.0.0"}
+                  v{parsedPreview.schemaVersion || "3.1.0"}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
                 <div>
-                  <span className="text-slate-500">Tasks: </span>
+                  <span className="text-slate-500">Topics: </span>
                   <span className="text-slate-200 font-bold">{parsedPreview.taskIds?.length ?? 0}</span>
                 </div>
                 <div>
@@ -262,7 +262,7 @@ const SnapshotDialog: React.FC<SnapshotDialogProps> = ({
                 </div>
                 <div>
                   <span className="text-slate-500">Rank: </span>
-                  <span className="text-amber-400 font-bold">{parsedPreview.clearanceRank || "Cadet"}</span>
+                  <span className="text-amber-400 font-bold">{parsedPreview.clearanceRank || "TIER 1: SYSTEMS OPERATOR"}</span>
                 </div>
                 <div>
                   <span className="text-slate-500">Progress: </span>

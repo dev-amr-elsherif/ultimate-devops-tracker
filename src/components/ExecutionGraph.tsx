@@ -11,54 +11,48 @@ export const ExecutionGraph: React.FC = () => {
   const [viewMode, setViewMode] = useState<"svg" | "ascii">("svg");
 
   const isPhaseDone = (phaseId: string) => {
-    const p = ROADMAP_PHASES.find((item) => item.id === phaseId);
+    const p = ROADMAP_PHASES.find((item) => item.phaseId === phaseId);
     if (!p) return false;
-    const taskIds = p.modules.flatMap((m) => m.tasks.map((t) => t.id));
-    return taskIds.length > 0 && taskIds.every((id) => completedTaskIds.has(id));
+    const topicIds = p.deepDiveTopics.flatMap((m) => m.topics.map((t) => t.id));
+    return topicIds.length > 0 && topicIds.every((id) => completedTaskIds.has(id));
   };
 
   const asciiGraph = `
-+---------------------------------------------------------------------------------------------+
-|               ULTIMATE DEVOPS & CLOUD ARCHITECTURE EXECUTION TOPOLOGY                       |
-+---------------------------------------------------------------------------------------------+
-                                      
-  [ PHASE 0: Terminal & OS Primitives ] (2 Wks)
-                    │
-                    ▼
-  [ PHASE 1: Linux Admin & Networking ] (3 Wks)
-                    │
-                    ├─────────────────────────────────────────┐
-                    ▼ (Morning Track)                         ▼ (Evening Track)
-        [ PHASE 2: Git Internals & PRs ]          [ PHASE 3: Bash & Python Automation ]
-                    │                                         │
-                    └────────────────────┬────────────────────┘
-                                         ▼ (Convergence)
-                         [ PHASE 4: Web Servers & Hardening ] (2 Wks)
-                                         │
-                                         ▼
-                         [ PHASE 5: Container Arch & Docker ] (3 Wks)
-                                         │
-                    ├────────────────────┴────────────────────┐
-                    ▼ (Morning Track)                         ▼ (Evening Track)
-        [ PHASE 6: AWS Cloud Architecture ]       [ PHASE 7: GitHub Actions CI/CD ]
-                    │                                         │
-                    └────────────────────┬────────────────────┘
-                                         ▼ (Convergence)
-                         [ PHASE 8: Infrastructure as Code ] (Terraform - 3 Wks)
-                                         │
-                                         ▼
-                         [ PHASE 9: Container Orchestration ] (Kubernetes - 4 Wks)
-                                         │
-                                         ▼
-                         [ PHASE 10: Full-Stack Observability ] (Prometheus/Grafana - 3 Wks)
-                                         │
-                                         ▼
-                         [ PHASE 11: Production Hardening & Chaos ] (2 Wks)
-                                         │
-                                         ▼
-                 =================================================
-                 [ GRADUATION CAPSTONE: MULTI-TIER CLOUD SYSTEM  ]
-                 =================================================
++-------------------------------------------------------------------------------------------------+
+|            DEVOPS & CLOUD ENGINEERING COMPREHENSIVE MASTER ROADMAP (2026)                       |
+|                 SEQUENTIAL FOUNDATIONS WITH CONCURRENT PARALLEL TRACKS                          |
++-------------------------------------------------------------------------------------------------+
+                                       
+     [ PHASE 01: Linux OS Primitives, Kernel Introspection & Networking ] (Sequential)
+                         │
+                         ├─────────────────────────────────────────┐
+                         ▼                                         ▼ (Concurrent Parallel Track)
+                         │                         [ PHASE 02: Git SCM & Python Automation ]
+                         │                                         │
+                         ▼ (Sequential Progression)                │
+     [ PHASE 03: SSH Hardening, Nginx & Modern TLS Termination ]   │
+                         │                                         │
+                         ▼                                         │
+     [ PHASE 04: Container Runtime Primitives & Docker Arch ]      │
+                         │                                         │
+                         ├────────────────────┬────────────────────┘
+                         ▼                    ▼ (Parallel Tracks)
+     [ PHASE 05: AWS Cloud & Terraform ]  [ PHASE 06: DevSecOps Delivery & GitHub Actions ]
+                         │                    │
+                         └──────────┬─────────┘
+                                    ▼ (Convergence)
+     [ PHASE 07: Container Orchestration with Kubernetes & Helm ] (Sequential)
+                         │
+                         ├─────────────────────────────────────────┐
+                         ▼                                         ▼ (Concurrent Parallel Track)
+                         │                         [ PHASE 08: Observability & GitOps Delivery ]
+                         │                                         │
+                         ▼ (Convergence to Defense)                │
+                         └────────────────────┬────────────────────┘
+                                              ▼
+     =============================================================================================
+     [ PHASE 09: ENTERPRISE HARDENING, SECRET MGMT, CHAOS ENGINEERING & CAPSTONE DEFENSE ]
+     =============================================================================================
 `;
 
   return (
@@ -69,7 +63,7 @@ export const ExecutionGraph: React.FC = () => {
           <div className="flex items-center gap-2">
             <Network className="w-4 h-4 text-cyan-400" />
             <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-cyan-300">
-              Execution Architecture & Dependency Graph
+              Execution Topology & Dependency Matrix (9-Phase Master Architecture)
             </h3>
           </div>
           <div className="flex items-center gap-2">
@@ -102,166 +96,158 @@ export const ExecutionGraph: React.FC = () => {
           </div>
         </div>
 
+        {/* Display modes */}
         {viewMode === "ascii" ? (
-          <div
-            tabIndex={0}
-            role="region"
-            aria-label="ASCII Execution Topology"
-            className="overflow-x-auto bg-slate-950 p-3 rounded-lg border border-slate-800 font-mono text-[11px] text-cyan-400/90 leading-tight focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-400"
-          >
-            <pre>{asciiGraph}</pre>
-          </div>
+          <pre className="p-4 rounded-lg bg-slate-900/80 border border-slate-800 text-[11px] font-mono text-cyan-300 overflow-x-auto selection:bg-cyan-500/30">
+            {asciiGraph}
+          </pre>
         ) : (
-          <div className="overflow-x-auto py-2">
-            <div className="min-w-[860px] flex flex-col items-center gap-3">
-              {/* Step 0 */}
-              <div className="flex items-center gap-2">
-                <NodeChip
-                  id="phase-0"
-                  label="Phase 0: Terminal & OS Primitives"
-                  tag="Sequential // 2 Wks"
-                  completed={isPhaseDone("phase-0")}
-                />
-              </div>
-
-              <DownArrow />
-
-              {/* Step 1 */}
-              <div className="flex items-center gap-2">
-                <NodeChip
-                  id="phase-1"
-                  label="Phase 1: Linux Admin & Core Networking"
-                  tag="Sequential // 3 Wks"
-                  completed={isPhaseDone("phase-1")}
-                />
-              </div>
-
-              <DownArrow />
-
-              {/* Parallel Tracks 2 & 3 */}
-              <div className="w-full max-w-2xl p-3 rounded-lg border border-violet-500/30 bg-violet-950/10 flex flex-col items-center">
-                <div className="text-[10px] font-mono text-violet-400 font-bold mb-2 uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-ping" />
-                  Parallel Execution Track 1 (3 Weeks Total)
+          <div className="p-3 sm:p-5 rounded-lg bg-slate-900/40 border border-slate-800 overflow-x-auto">
+            <div className="min-w-[800px] flex flex-col items-center gap-3 font-mono text-xs">
+              {/* Phase 01 */}
+              <div
+                className={`w-96 p-2.5 rounded-lg border text-center transition-all ${
+                  isPhaseDone("phase-01")
+                    ? "bg-emerald-950/40 border-emerald-400 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                    : "bg-slate-900 border-cyan-500/40 text-cyan-200"
+                }`}
+              >
+                <div className="font-bold flex items-center justify-center gap-1.5">
+                  <span>Phase 01: Linux OS Primitives & Networking</span>
+                  {isPhaseDone("phase-01") && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
                 </div>
-                <div className="flex items-center justify-center gap-6 w-full">
-                  <div className="flex-1">
-                    <NodeChip
-                      id="phase-2"
-                      label="Track A (Morning): Git & GitHub"
-                      tag="Branching & Internals"
-                      completed={isPhaseDone("phase-2")}
-                      variant="violet"
-                    />
+                <div className="text-[10px] text-slate-400">Sequential Foundation</div>
+              </div>
+
+              {/* Fork 1: Phase 02 (Parallel) & Phase 03 (Sequential) */}
+              <div className="text-cyan-500 text-sm">↓</div>
+              <div className="grid grid-cols-2 gap-8 w-[720px]">
+                {/* Phase 03 */}
+                <div
+                  className={`p-2.5 rounded-lg border text-center transition-all ${
+                    isPhaseDone("phase-03")
+                      ? "bg-emerald-950/40 border-emerald-400 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                      : "bg-slate-900 border-cyan-500/40 text-cyan-200"
+                  }`}
+                >
+                  <div className="font-bold flex items-center justify-center gap-1.5">
+                    <span>Phase 03: SSH, Nginx & TLS</span>
+                    {isPhaseDone("phase-03") && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
                   </div>
-                  <span className="font-mono text-xs text-slate-500 font-bold">+</span>
-                  <div className="flex-1">
-                    <NodeChip
-                      id="phase-3"
-                      label="Track B (Evening): Bash & Python Automation"
-                      tag="CLI & Scripting"
-                      completed={isPhaseDone("phase-3")}
-                      variant="violet"
-                    />
+                  <div className="text-[10px] text-cyan-400">Sequential Foundation</div>
+                </div>
+
+                {/* Phase 02 */}
+                <div
+                  className={`p-2.5 rounded-lg border text-center transition-all ${
+                    isPhaseDone("phase-02")
+                      ? "bg-emerald-950/40 border-emerald-400 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                      : "bg-slate-900 border-violet-500/40 text-violet-200"
+                  }`}
+                >
+                  <div className="font-bold flex items-center justify-center gap-1.5">
+                    <span>Phase 02: Git SCM & Python Automation</span>
+                    {isPhaseDone("phase-02") && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
                   </div>
+                  <div className="text-[10px] text-violet-400">Parallel with Phase 01</div>
                 </div>
               </div>
 
-              <DownArrow />
-
-              {/* Step 4 */}
-              <div className="flex items-center gap-2">
-                <NodeChip
-                  id="phase-4"
-                  label="Phase 4: Web Servers, Proxies, TLS & SSH Hardening"
-                  tag="Convergence // 2 Wks"
-                  completed={isPhaseDone("phase-4")}
-                />
-              </div>
-
-              <DownArrow />
-
-              {/* Step 5 */}
-              <div className="flex items-center gap-2">
-                <NodeChip
-                  id="phase-5"
-                  label="Phase 5: Container Architecture & Docker Deep-Dive"
-                  tag="Sequential // 3 Wks"
-                  completed={isPhaseDone("phase-5")}
-                />
-              </div>
-
-              <DownArrow />
-
-              {/* Parallel Tracks 6 & 7 */}
-              <div className="w-full max-w-2xl p-3 rounded-lg border border-violet-500/30 bg-violet-950/10 flex flex-col items-center">
-                <div className="text-[10px] font-mono text-violet-400 font-bold mb-2 uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-ping" />
-                  Parallel Execution Track 2 (4 Weeks Total)
+              {/* Phase 04 */}
+              <div className="text-cyan-500 text-sm">↓</div>
+              <div
+                className={`w-96 p-2.5 rounded-lg border text-center transition-all ${
+                  isPhaseDone("phase-04")
+                    ? "bg-emerald-950/40 border-emerald-400 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                    : "bg-slate-900 border-cyan-500/40 text-cyan-200"
+                }`}
+              >
+                <div className="font-bold flex items-center justify-center gap-1.5">
+                  <span>Phase 04: Container Primitives & Docker</span>
+                  {isPhaseDone("phase-04") && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
                 </div>
-                <div className="flex items-center justify-center gap-6 w-full">
-                  <div className="flex-1">
-                    <NodeChip
-                      id="phase-6"
-                      label="Track A (Morning): AWS Cloud Infrastructure"
-                      tag="VPC, IAM & EC2"
-                      completed={isPhaseDone("phase-6")}
-                      variant="violet"
-                    />
+                <div className="text-[10px] text-slate-400">Sequential Foundation</div>
+              </div>
+
+              {/* Fork 2: Phase 05 & Phase 06 */}
+              <div className="text-cyan-500 text-sm">↓</div>
+              <div className="grid grid-cols-2 gap-8 w-[720px]">
+                <div
+                  className={`p-2.5 rounded-lg border text-center transition-all ${
+                    isPhaseDone("phase-05")
+                      ? "bg-emerald-950/40 border-emerald-400 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                      : "bg-slate-900 border-violet-500/40 text-violet-200"
+                  }`}
+                >
+                  <div className="font-bold flex items-center justify-center gap-1.5">
+                    <span>Phase 05: AWS Cloud & Terraform</span>
+                    {isPhaseDone("phase-05") && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
                   </div>
-                  <span className="font-mono text-xs text-slate-500 font-bold">+</span>
-                  <div className="flex-1">
-                    <NodeChip
-                      id="phase-7"
-                      label="Track B (Evening): GitHub Actions CI/CD"
-                      tag="Pipelines & Registry"
-                      completed={isPhaseDone("phase-7")}
-                      variant="violet"
-                    />
+                  <div className="text-[10px] text-violet-400">Parallel with Phase 04</div>
+                </div>
+
+                <div
+                  className={`p-2.5 rounded-lg border text-center transition-all ${
+                    isPhaseDone("phase-06")
+                      ? "bg-emerald-950/40 border-emerald-400 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                      : "bg-slate-900 border-violet-500/40 text-violet-200"
+                  }`}
+                >
+                  <div className="font-bold flex items-center justify-center gap-1.5">
+                    <span>Phase 06: DevSecOps & GitHub Actions</span>
+                    {isPhaseDone("phase-06") && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
                   </div>
+                  <div className="text-[10px] text-violet-400">Parallel with Phase 04, 05</div>
                 </div>
               </div>
 
-              <DownArrow />
-
-              {/* Steps 8, 9, 10, 11 */}
-              <div className="grid grid-cols-4 gap-3 w-full max-w-4xl">
-                <NodeChip
-                  id="phase-8"
-                  label="Phase 8: Terraform"
-                  tag="IaC & Remote State"
-                  completed={isPhaseDone("phase-8")}
-                />
-                <NodeChip
-                  id="phase-9"
-                  label="Phase 9: Kubernetes"
-                  tag="Fleets & Helm"
-                  completed={isPhaseDone("phase-9")}
-                />
-                <NodeChip
-                  id="phase-10"
-                  label="Phase 10: Observability"
-                  tag="Prometheus/Grafana"
-                  completed={isPhaseDone("phase-10")}
-                />
-                <NodeChip
-                  id="phase-11"
-                  label="Phase 11: DevSecOps"
-                  tag="Chaos & CIS Audit"
-                  completed={isPhaseDone("phase-11")}
-                />
+              {/* Convergence to Phase 07 */}
+              <div className="text-cyan-500 text-sm">↓</div>
+              <div
+                className={`w-96 p-2.5 rounded-lg border text-center transition-all ${
+                  isPhaseDone("phase-07")
+                    ? "bg-emerald-950/40 border-emerald-400 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                    : "bg-slate-900 border-cyan-500/40 text-cyan-200"
+                }`}
+              >
+                <div className="font-bold flex items-center justify-center gap-1.5">
+                  <span>Phase 07: Kubernetes & Helm Orchestration</span>
+                  {isPhaseDone("phase-07") && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
+                </div>
+                <div className="text-[10px] text-slate-400">Sequential Fleet Foundation</div>
               </div>
 
-              <DownArrow />
-
-              {/* Graduation Capstone */}
-              <div className="p-3.5 rounded-xl border border-emerald-500/50 bg-emerald-950/30 text-center w-full max-w-xl shadow-[0_0_20px_rgba(0,255,157,0.15)] border-glow-green">
-                <div className="text-[11px] font-mono uppercase tracking-widest text-emerald-400 font-bold flex items-center justify-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  GRADUATION CAPSTONE DEFENSE TRIAL
+              {/* Phase 08 (Parallel with Phase 07) */}
+              <div className="text-cyan-500 text-sm">↓</div>
+              <div
+                className={`w-96 p-2.5 rounded-lg border text-center transition-all ${
+                  isPhaseDone("phase-08")
+                    ? "bg-emerald-950/40 border-emerald-400 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                    : "bg-slate-900 border-violet-500/40 text-violet-200"
+                }`}
+              >
+                <div className="font-bold flex items-center justify-center gap-1.5">
+                  <span>Phase 08: Observability, RED Stack & GitOps</span>
+                  {isPhaseDone("phase-08") && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
                 </div>
-                <div className="text-xs text-slate-300 font-mono mt-1">
-                  Production Multi-Tier Cloud Delivery System (EKS, Terraform, CI/CD, Observability)
+                <div className="text-[10px] text-violet-400">Parallel with Phase 07</div>
+              </div>
+
+              {/* Final Convergence: Phase 09 Enterprise Defense */}
+              <div className="text-emerald-500 text-sm">↓</div>
+              <div
+                className={`w-[520px] p-3 rounded-xl border text-center transition-all ${
+                  isPhaseDone("phase-09")
+                    ? "bg-emerald-500/20 border-emerald-400 text-emerald-200 shadow-[0_0_20px_rgba(16,185,129,0.4)]"
+                    : "bg-slate-950 border-emerald-500/40 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]"
+                }`}
+              >
+                <div className="font-bold tracking-wider flex items-center justify-center gap-1.5">
+                  <span>Phase 09: Enterprise Hardening, Chaos Resiliency & Capstone Defense</span>
+                  {isPhaseDone("phase-09") && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+                </div>
+                <div className="text-[10px] text-slate-400 mt-0.5">
+                  Multi-Tier Microservices • KMS/SOPS • Chaos Mesh • CIS Benchmark Defense
                 </div>
               </div>
             </div>
@@ -271,33 +257,3 @@ export const ExecutionGraph: React.FC = () => {
     </div>
   );
 };
-
-const NodeChip: React.FC<{
-  id: string;
-  label: string;
-  tag: string;
-  completed: boolean;
-  variant?: "cyan" | "violet";
-}> = ({ label, tag, completed, variant = "cyan" }) => {
-  return (
-    <div
-      className={`px-3 py-2 rounded-lg border text-center transition-all ${
-        completed
-          ? "bg-emerald-950/40 border-emerald-400/60 text-emerald-300 shadow-[0_0_12px_rgba(0,255,157,0.2)]"
-          : variant === "violet"
-          ? "bg-slate-900/80 border-violet-500/30 text-violet-200"
-          : "bg-slate-900/80 border-cyan-500/30 text-cyan-200"
-      }`}
-    >
-      <div className="flex items-center justify-center gap-1.5">
-        {completed && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
-        <span className="text-xs font-mono font-bold tracking-tight truncate">{label}</span>
-      </div>
-      <div className="text-[10px] font-mono text-slate-400 mt-0.5">{tag}</div>
-    </div>
-  );
-};
-
-const DownArrow: React.FC = () => (
-  <div className="w-0.5 h-4 bg-gradient-to-b from-cyan-500/60 to-cyan-500/20 my-0.5" />
-);

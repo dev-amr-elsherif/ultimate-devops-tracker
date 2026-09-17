@@ -1,39 +1,44 @@
-# Ultimate DevOps & Cloud Engineering Master Roadmap (Zero-to-Hero)
+# Ultimate DevOps Tracker Pro (9-Phase Master Roadmap)
 
-An enterprise-grade, sci-fi command terminal web application and interactive curriculum tracker designed to take an engineer from operating system primitives to multi-cloud architecture, automated CI/CD pipelines, Kubernetes fleet orchestration, and full-stack observability.
+An enterprise-grade, sci-fi cyberpunk telemetry command center and interactive curriculum tracker designed to take an engineer from operating system primitives to multi-cloud architecture, automated CI/CD pipelines, Kubernetes fleet orchestration, distributed observability, and enterprise chaos resiliency.
+
+Conforms directly to `./roadmap.json` (Schema v3.0.0, "DevOps & Cloud Engineering Comprehensive Master Roadmap (2026)").
 
 ---
 
 ## ⚡ Key Highlights & Features
 
-- **Sci-Fi Command Terminal UI**: Dark obsidian palette (`#030712`, `#0b1329`), neon cyan (`#00f0ff`), neon green (`#00ff9d`), warning amber (`#f59e0b`), and laser crimson (`#ef4444`). Glassmorphism cards with glowing borders and scanline filter overlays.
+- **Cyberpunk Telemetry Command Center UI**: Deep Matrix Obsidian palette (`#0a0b10`), Neon Emerald (`#10b981`), Cyber Cyan (`#06b6d4`), and Crimson Hazard (`#f43f5e`). Glassmorphism cards with glowing borders and scanline filter overlays.
 - **Interactive 3D Cyber Canvas**: Custom HTML5 Canvas rendering a 3D-perspective wireframe horizon grid and floating starlight particles responding with parallax to mouse motion.
-- **Synthesized Web Audio Engine**: Browser-native Web Audio API oscillator synthesis generating sci-fi UI clicks, access denial alarms, holographic activation chimes, and milestone celebration fanfares without external audio files.
+- **Holographic Clearance ID Engine**: Generates high-resolution ($1200 \times 630$) social share card credentials with center-cropped dual-ring neon avatars, dynamic clearance tiers, SHA-256 verification signatures, and live verification QR codes.
+- **Synthesized Web Audio Engine**: Browser-native Web Audio API synthesizer clicks, access denial alarms, and milestone celebration fanfares without external audio assets.
 - **Dual Security Model**:
-  - **Observer Mode (Default)**: Public read-only portfolio tracker. Task checkboxes are locked; clicking triggers an "Access Denied: Commander Mode authentication required" alert.
-  - **Commander Mode (Authenticated)**: Unlocked via holographic lock button or `Ctrl + Shift + A`. Configured via `NEXT_PUBLIC_COMMANDER_PIN`. Unlocks task editing, state persistence in `localStorage`, JSON snapshot export, and milestone defense triggers.
-- **Telemetry HUD**: Real-time progress percentage, operational phases count (100% complete), task counts, remaining milestones, and dynamic Clearance Rank badges (`Cadet` ➔ `SysAdmin` ➔ `Cloud Architect` ➔ `DevOps Lead`).
-- **Interactive Execution Topology**: Visual SVG flowchart and raw ASCII topology mapping sequential phases, parallel morning/evening tracks, convergence gates, and the final capstone trial.
-- **Complete 12-Phase Curriculum**: Fully typed schema with real-world production bash commands, Dockerfiles, Terraform HCL, Kubernetes YAML, and acceptance criteria.
-- **Graduation Capstone**: "Production Multi-Tier Cloud Delivery System" specification with defense evaluation checklist and repository tree layout.
+  - **Observer Mode (Default)**: Public read-only portfolio tracker with locked checkboxes and view-only telemetry.
+  - **Commander Mode (Authenticated)**: Unlocked via authorized Google Identity or test clearance hook. Unlocks topic editing, personal notes, proof-of-work linking, milestone verification, and snapshot ingestion.
+- **Telemetry HUD**: Real-time dynamically computed telemetry:
+  - **TOTAL_ITEMS**: 121 trackable interactive topics across 33 modules.
+  - **GLOBAL_PROGRESS**: Dynamically computed completion percentage.
+  - **VERIFIED_ARTIFACTS**: 9 project milestone certifications.
+  - **CLEARANCE TIERS**: Dynamic progression (`TIER 1: SYSTEMS OPERATOR` ➔ `TIER 2: CLOUD SPECIALIST` ➔ `TIER 3: INFRASTRUCTURE ARCHITECT` ➔ `TIER 4: PLATFORM LEAD` ➔ `PRINCIPAL CLOUD COMMANDER`).
+- **Interactive Execution Topology**: Visual SVG flowchart and raw ASCII topology mapping sequential foundations, parallel execution tracks, and the final enterprise defense capstone.
+- **Recon Academy Coursera Sources**: Dedicated expandable drawer per phase with clickable search chips and one-click query copying.
+- **Snapshot Engine & Google Drive Cloud Sync**: Target schema v3.1.0 with robust backwards-compatibility mapping for legacy v3.0.0 snapshots.
 
 ---
 
-## 🗺️ 12-Phase Curriculum Architecture
+## 🗺️ 9-Phase Master Curriculum Architecture
 
-| Phase | Title | Duration | Mode | Key Deliverable / Milestone |
+| Phase | Title | Track Type | Parallel With | Primary Project Deliverable |
 |---|---|---|---|---|
-| **Phase 0** | Terminal Setup & OS Primitives | 2 Weeks | Sequential | `sys-init-probe.sh` diagnostic probe |
-| **Phase 1** | Linux Administration & Networking | 3 Weeks | Sequential | `server-stats.sh` & Custom Systemd Service |
-| **Phase 2 & 3** | Git Internals & Automation | 3 Weeks | Parallel Track | `log-archive.sh` Log Archival Tool |
-| **Phase 4** | Web Servers, Proxies, TLS & SSH | 2 Weeks | Sequential | SSH Hardening & `nginx-log-analyser.sh` |
-| **Phase 5** | Container Arch & Docker Deep-Dive | 3 Weeks | Sequential | Lean Multi-Stage Dockerfile & 3-Tier Stack |
-| **Phase 6 & 7** | AWS Architecture & GitHub Actions | 4 Weeks | Parallel Track | EC2 Secure SSM & Automated CI/CD Pipeline |
-| **Phase 8** | Infrastructure as Code (Terraform) | 3 Weeks | Sequential | Automated Cloud Stack (VPC + ALB + RDS) |
-| **Phase 9** | Kubernetes Orchestration | 4 Weeks | Sequential | Self-Healing Microservice Fleet + Helm |
-| **Phase 10** | Full-Stack Observability | 3 Weeks | Sequential | Prometheus, Grafana & Loki Alerting Stack |
-| **Phase 11** | Hardening, DevSecOps & Chaos | 2 Weeks | Sequential | Chaos Mesh Partition & CIS Benchmarks |
-| **Graduation** | Multi-Tier Cloud Delivery System | Final | Capstone | Automated Git ➔ IaC ➔ K8s ➔ Monitored Fleet |
+| **Phase 01** | Linux OS Primitives, Kernel Introspection & Core Networking | Sequential | - | `sys-init-probe.sh & server-stats.sh` |
+| **Phase 02** | Git Architecture, Cryptographic SCM & Python Systems Automation | Parallel | Phase 01 | `Log Archive Tool & Web Log Analyser CLI` |
+| **Phase 03** | SSH Hardening, Edge Web Servers & Modern TLS Termination | Sequential | - | `Hardened Non-Root Server & Secure Reverse Proxy` |
+| **Phase 04** | Container Runtime Primitives, OCI Hardening & Docker Architecture | Sequential | - | `Production Lean Distroless Container Stack` |
+| **Phase 05** | AWS Cloud Architecture, Multi-AZ Networking & Terraform IaC | Parallel | Phase 04 | `IaC Automated Multi-AZ Cloud Stack` |
+| **Phase 06** | Continuous Delivery, DevSecOps Supply Chain & GitHub Actions | Parallel | Phase 04, 05 | `End-to-End DevSecOps Delivery Pipeline` |
+| **Phase 07** | Container Orchestration with Kubernetes & Helm Packaging | Sequential | - | `Self-Healing Microservice Fleet (Kubernetes & Helm)` |
+| **Phase 08** | Full-Stack Observability, Distributed Telemetry & GitOps Delivery | Parallel | Phase 07 | `Observability RED Stack & GitOps ArgoCD Pipeline` |
+| **Phase 09** | Enterprise Hardening, Secret Mgmt, Chaos Engineering & Capstone Defense | Sequential | - | `Production Hardened, Chaos-Resilient Enterprise Infrastructure` |
 
 ---
 
@@ -59,37 +64,21 @@ npm run dev
 
 Navigate to `http://localhost:3000` in your browser.
 
-### Production Build
+### Verification & Testing
 
 ```bash
-# Verify TypeScript and linting
+# Verify TypeScript type-checking
+npx tsc --noEmit
+
+# Run 9-Phase curriculum data parity audit
+npm run audit
+
+# Run Playwright E2E verification suite
+npm run test
+
+# Run ESLint validation
 npm run lint
-
-# Generate optimized production bundle
-npm run build
-
-# Start production server
-npm run start
 ```
-
----
-
-## 🔐 Commander Mode Authentication
-
-- Configured via environment variable: `NEXT_PUBLIC_COMMANDER_PIN` (see `.env.example`).
-- Hotkey: Press `Ctrl + Shift + A` anywhere on the page to summon the Commander Authentication dialog.
-- Alternatively, click the **OBSERVER MODE (UNLOCK)** button in the top HUD.
-
----
-
-## 🛠️ Tech Stack
-
-- **Framework**: [Next.js 16 App Router](https://nextjs.org/) (Turbopack, React 19)
-- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
-- **Icons**: [Lucide React](https://lucide.dev/)
-- **Visual FX**: [canvas-confetti](https://www.npmjs.com/package/canvas-confetti)
-- **Audio**: Native Web Audio API (`AudioContext` Oscillators & Gain Envelopes)
-- **State**: React Context API with LocalStorage & SessionStorage synchronization
 
 ---
 

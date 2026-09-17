@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "playwright test",
+    "test:audit": "playwright test tests/full-telemetry-audit.spec.ts",
     "audit": "node scripts/audit-roadmap.mjs"
   },
   "dependencies": {
