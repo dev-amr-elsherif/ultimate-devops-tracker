@@ -231,9 +231,14 @@ export async function renderClearanceBadgeCanvas(
   ctx.fillStyle = "rgba(6, 182, 212, 0.8)";
   ctx.fillText("// ULTIMATE DEVOPS TRACKER PRO • HOLOGRAPHIC CLEARANCE CREDENTIAL v3.1.0", 52, 54);
 
+  const issuedDate = new Date().toISOString().slice(0, 10).replace(/-/g, ".");
   ctx.fillStyle = "rgba(16, 185, 129, 0.9)";
   ctx.textAlign = "right";
-  ctx.fillText("STATUS: ACTIVE & VERIFIED • LEVEL 0" + tierInfo.level, WIDTH - 52, 54);
+  ctx.fillText(
+    `STATUS: ACTIVE & VERIFIED • LEVEL 0${tierInfo.level} • ISSUED: ${issuedDate}`,
+    WIDTH - 52,
+    54
+  );
   ctx.textAlign = "left";
 
   // ==========================================
@@ -446,6 +451,16 @@ export async function renderClearanceBadgeCanvas(
   ctx.shadowColor = "#10b981";
   ctx.shadowBlur = 8;
   ctx.fill();
+
+  // Progress Dot Clamping (minimum 4px left offset on 0% to prevent boundary clipping)
+  const p1DotX = Math.min(p1X + 18 + barW - 4, Math.max(p1X + 18 + 4, p1X + 18 + (barW * globalProgress) / 100));
+  const p1DotY = barY + barH / 2;
+  ctx.beginPath();
+  ctx.arc(p1DotX, p1DotY, 3.5, 0, Math.PI * 2);
+  ctx.fillStyle = "#ffffff";
+  ctx.shadowColor = "#10b981";
+  ctx.shadowBlur = 8;
+  ctx.fill();
   ctx.restore();
 
   // Pillar 2: TOPICS DEFENDED
@@ -471,7 +486,7 @@ export async function renderClearanceBadgeCanvas(
 
   ctx.font = "12px monospace";
   ctx.fillStyle = "#94a3b8";
-  ctx.fillText(`TOPICS DEFENDED: ${completedItems} / ${totalItems}`, p2X + 18, pillarY + 102);
+  ctx.fillText("CURRICULUM TOPICS DEFENDED", p2X + 18, pillarY + 102);
 
   // Ratio Pill
   const p2Percent = Math.round((completedItems / totalItems) * 100);
@@ -483,6 +498,16 @@ export async function renderClearanceBadgeCanvas(
   const p2FillW = Math.max(8, (p2BarW * p2Percent) / 100);
   drawRoundRect(ctx, p2X + 18, barY, p2FillW, barH, 5);
   ctx.fillStyle = "#10b981";
+  ctx.shadowColor = "#10b981";
+  ctx.shadowBlur = 8;
+  ctx.fill();
+
+  // Progress Dot Clamping (minimum 4px left offset on 0% to prevent boundary clipping)
+  const p2DotX = Math.min(p2X + 18 + p2BarW - 4, Math.max(p2X + 18 + 4, p2X + 18 + (p2BarW * p2Percent) / 100));
+  const p2DotY = barY + barH / 2;
+  ctx.beginPath();
+  ctx.arc(p2DotX, p2DotY, 3.5, 0, Math.PI * 2);
+  ctx.fillStyle = "#ffffff";
   ctx.shadowColor = "#10b981";
   ctx.shadowBlur = 8;
   ctx.fill();
@@ -511,7 +536,7 @@ export async function renderClearanceBadgeCanvas(
 
   ctx.font = "12px monospace";
   ctx.fillStyle = "#94a3b8";
-  ctx.fillText(`VERIFIED ARTIFACTS: ${verifiedArtifacts} / 9`, p3X + 18, pillarY + 102);
+  ctx.fillText("VERIFIED PRODUCTION ARTIFACTS", p3X + 18, pillarY + 102);
 
   const p3Percent = Math.round((verifiedArtifacts / 9) * 100);
   const p3BarW = pillarWidth - 36;
@@ -522,6 +547,16 @@ export async function renderClearanceBadgeCanvas(
   const p3FillW = Math.max(8, (p3BarW * p3Percent) / 100);
   drawRoundRect(ctx, p3X + 18, barY, p3FillW, barH, 5);
   ctx.fillStyle = "#f59e0b";
+  ctx.shadowColor = "#f59e0b";
+  ctx.shadowBlur = 8;
+  ctx.fill();
+
+  // Progress Dot Clamping (minimum 4px left offset on 0% to prevent boundary clipping)
+  const p3DotX = Math.min(p3X + 18 + p3BarW - 4, Math.max(p3X + 18 + 4, p3X + 18 + (p3BarW * p3Percent) / 100));
+  const p3DotY = barY + barH / 2;
+  ctx.beginPath();
+  ctx.arc(p3DotX, p3DotY, 3.5, 0, Math.PI * 2);
+  ctx.fillStyle = "#ffffff";
   ctx.shadowColor = "#f59e0b";
   ctx.shadowBlur = 8;
   ctx.fill();

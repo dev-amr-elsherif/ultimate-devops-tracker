@@ -160,7 +160,6 @@ export function generateCompleteArchive(params: GenerateArchiveParams): FullRoad
     },
     engineer: {
       name: "Amr Fathy Elsherif",
-      avatarUrl: params.customAvatarUrl || null,
     },
     phases,
   };

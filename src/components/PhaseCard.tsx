@@ -190,7 +190,7 @@ export const PhaseCard: React.FC<PhaseCardProps> = ({ phase }) => {
 
       {/* Coursera Certification & Resource Drawer [RECON_ACADEMY: COURSERA SOURCES] */}
       {phase.courseraSearchQueries && phase.courseraSearchQueries.length > 0 && (
-        <div className="my-3 rounded-xl border border-cyan-500/30 bg-slate-900/60 overflow-hidden">
+        <div className="my-3 rounded-xl border border-cyan-500/30 hover:border-cyan-500/60 bg-slate-900/60 overflow-hidden transition-all duration-200">
           <button
             data-testid={`recon-drawer-toggle-${phase.phaseId}`}
             type="button"
@@ -199,21 +199,26 @@ export const PhaseCard: React.FC<PhaseCardProps> = ({ phase }) => {
               setIsReconOpen(!isReconOpen);
             }}
             aria-expanded={isReconOpen}
-            className="w-full flex items-center justify-between p-3 cursor-pointer bg-slate-900/80 hover:bg-slate-800/80 transition-colors text-left focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
+            className="w-full flex items-center justify-between p-3 cursor-pointer bg-slate-900/80 hover:border-cyan-500/60 hover:bg-cyan-950/30 transition-all duration-200 text-left focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
           >
-            <div className="flex items-center gap-2 text-cyan-300 font-mono text-xs font-bold">
+            <div className="flex items-center gap-2 text-cyan-300 font-mono text-xs font-bold flex-wrap">
               <GraduationCap className="w-4 h-4 text-cyan-400" />
               <span>[RECON_ACADEMY: COURSERA SOURCES]</span>
               <span className="text-[10px] text-cyan-400/80 bg-cyan-950/80 border border-cyan-500/40 px-1.5 py-0.2 rounded">
                 {phase.courseraSearchQueries.length} Courses
               </span>
+              <span className="text-[9px] font-mono text-cyan-400/80 bg-cyan-950/60 border border-cyan-500/40 px-1.5 py-0.5 rounded tracking-wider">
+                {isReconOpen ? "[CLICK TO COLLAPSE]" : "[CLICK TO EXPAND]"}
+              </span>
             </div>
-            <div className="text-cyan-400">
-              {isReconOpen ? (
-                <ChevronUp className="w-4 h-4" />
-              ) : (
-                <ChevronDown className="w-4 h-4" />
-              )}
+            <div className="text-cyan-400 flex items-center gap-1.5 font-mono text-xs">
+              <span
+                className={`inline-block transition-transform duration-200 ${
+                  isReconOpen ? "rotate-180" : "rotate-0"
+                }`}
+              >
+                ▼
+              </span>
             </div>
           </button>
 

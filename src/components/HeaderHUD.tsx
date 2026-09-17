@@ -35,7 +35,7 @@ export const HeaderHUD: React.FC = () => {
               </h1>
             </div>
             <p className="text-xs font-mono text-slate-400 hidden lg:block whitespace-nowrap">
-              Zero-to-Hero Cloud Architecture &amp; Systems Mastery
+              Production Cloud Infrastructure &amp; Systems Architecture
             </p>
           </div>
         </div>
@@ -57,7 +57,7 @@ export const HeaderHUD: React.FC = () => {
           <span className="hidden sm:inline text-slate-700">|</span>
           <div className="hidden sm:flex items-center gap-1.5 text-slate-400">
             <span suppressHydrationWarning>
-              {safeIsCommander ? "Tasks Completed" : "Tasks Locked"}:
+              TOPICS DEFENDED:
             </span>
             <span className="text-slate-200 font-bold" suppressHydrationWarning>
               {safeTasksCount} / {totalTasks}

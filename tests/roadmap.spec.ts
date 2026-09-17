@@ -32,8 +32,8 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 
-    // Header HUD displays "Tasks Locked" and dynamic total 121
-    const taskCountEl = page.locator("text=/Tasks Locked/i");
+    // Header HUD displays "TOPICS DEFENDED:" and dynamic total 121
+    const taskCountEl = page.locator("text=/TOPICS DEFENDED:/i");
     await expect(taskCountEl).toBeVisible();
     await expect(page.locator("text=/0 \\/ 121/")).toBeVisible();
 
@@ -69,7 +69,7 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     const modeToggleBtn = page.getByTestId("auth-mode-btn");
     await expect(modeToggleBtn).toBeVisible();
     await expect(modeToggleBtn.locator("text=/Observer Mode/i")).toBeVisible();
-    await expect(page.locator("text=/Tasks Locked/i")).toBeVisible();
+    await expect(page.locator("text=/TOPICS DEFENDED:/i")).toBeVisible();
 
     // 2. Observer Mode: Modifying task is rejected
     const firstTask = page.getByTestId("task-checkbox").first();
@@ -84,8 +84,8 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     await expect(commanderPill).toBeVisible();
     await expect(commanderPill.locator("text=/Commander/i")).toBeVisible();
 
-    // 5. Assert Header HUD label changes from "Tasks Locked" to "Tasks Completed"
-    await expect(page.locator("text=/Tasks Completed/i")).toBeVisible();
+    // 5. Assert Header HUD telemetry readout
+    await expect(page.locator("text=/TOPICS DEFENDED:/i")).toBeVisible();
 
     // 6. Commander can now toggle tasks
     await firstTask.click();
@@ -97,7 +97,7 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     await disconnectBtn.click();
     await expect(page.getByTestId("auth-mode-btn")).toBeVisible();
     await expect(page.getByTestId("auth-mode-btn").locator("text=/Observer Mode/i")).toBeVisible();
-    await expect(page.locator("text=/Tasks Locked/i")).toBeVisible();
+    await expect(page.locator("text=/TOPICS DEFENDED:/i")).toBeVisible();
   });
 
   test("3. Telemetry & Progress Calculation - Dynamically increments on completion", async ({ page }) => {
@@ -108,7 +108,7 @@ test.describe("Ultimate DevOps Master Roadmap - E2E Verification Suite", () => {
     await authenticateCommander(page);
 
     // Initial progress should be 0%
-    await expect(page.locator("text=/Tasks Completed/i")).toBeVisible();
+    await expect(page.locator("text=/TOPICS DEFENDED:/i")).toBeVisible();
     const initialTasks = page.locator("text=/0 \\/ 121/");
     await expect(initialTasks).toBeVisible();
 

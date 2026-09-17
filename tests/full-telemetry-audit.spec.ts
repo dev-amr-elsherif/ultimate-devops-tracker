@@ -116,14 +116,14 @@ test.describe("Deep Telemetry & E2E Automation QA Suite (9-Phase Master Architec
     // 5. Initial HUD Telemetry: 0 / 121 and 0%
     await expect(page.locator("text=/0 \\/ 121/")).toBeVisible();
     await expect(page.locator("text=/PROGRESS:/i")).toBeVisible();
-    await expect(page.locator("text=/Tasks Locked/i")).toBeVisible();
+    await expect(page.locator("text=/TOPICS DEFENDED:/i")).toBeVisible();
   });
 
   test("2.2 Mathematical Progression Stress Test - Dynamic progress, tier transitions, and defended state", async ({
     page,
   }) => {
     await authenticateCommander(page);
-    await expect(page.locator("text=/Tasks Completed/i")).toBeVisible();
+    await expect(page.locator("text=/TOPICS DEFENDED:/i")).toBeVisible();
 
     const topicCheckboxes = page.locator("[data-testid='task-checkbox']");
 
@@ -262,7 +262,7 @@ test.describe("Deep Telemetry & E2E Automation QA Suite (9-Phase Master Architec
 
     // 3. Switch to Commander Mode
     await authenticateCommander(page);
-    await expect(page.locator("text=/Tasks Completed/i")).toBeVisible();
+    await expect(page.locator("text=/TOPICS DEFENDED:/i")).toBeVisible();
 
     // 4. Toggle topic checkbox in Commander Mode
     await firstCheckbox.click();
@@ -549,6 +549,11 @@ test.describe("Deep Telemetry & E2E Automation QA Suite (9-Phase Master Architec
         });
       });
       expect(totalTopics).toBe(121);
+
+      // Validate lean engineer payload without raw base64 avatarUrl overhead
+      expect(exportedArchive.engineer).toBeDefined();
+      expect(exportedArchive.engineer.name).toBe("Amr Fathy Elsherif");
+      expect(exportedArchive.engineer.avatarUrl).toBeUndefined();
     }
 
     await page.locator("button[aria-label='Close modal']").click();

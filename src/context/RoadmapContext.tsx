@@ -147,6 +147,7 @@ const STORAGE_KEY = "devops_roadmap_progress";
 const ALT_STORAGE_KEY = "devops_roadmap_state";
 const ARTIFACTS_STORAGE_KEY = "devops_roadmap_artifacts";
 const AVATAR_STORAGE_KEY = "devops_roadmap_avatar";
+const ALT_AVATAR_STORAGE_KEY = "devops_tracker_avatar";
 export const TASK_DETAILS_STORAGE_KEY = "devops_roadmap_task_details";
 export const AUTHORIZED_COMMANDERS = [
   "dev.amrelsherif@gmail.com",
@@ -236,7 +237,9 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
       }
 
-      const savedAvatar = localStorage.getItem(AVATAR_STORAGE_KEY);
+      const savedAvatar =
+        localStorage.getItem(ALT_AVATAR_STORAGE_KEY) ||
+        localStorage.getItem(AVATAR_STORAGE_KEY);
       if (savedAvatar) {
         setCustomAvatarUrl(savedAvatar);
       }
@@ -350,6 +353,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (!isCommander) return;
       setCustomAvatarUrl(dataUrl);
       try {
+        localStorage.setItem(ALT_AVATAR_STORAGE_KEY, dataUrl);
         localStorage.setItem(AVATAR_STORAGE_KEY, dataUrl);
       } catch {}
     },
@@ -668,6 +672,7 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (importedAvatar) {
           setCustomAvatarUrl(importedAvatar);
           try {
+            localStorage.setItem(ALT_AVATAR_STORAGE_KEY, importedAvatar);
             localStorage.setItem(AVATAR_STORAGE_KEY, importedAvatar);
           } catch {}
         }
